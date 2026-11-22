@@ -1,3 +1,8 @@
+# Deployment checklist 2026-11-22 — waiting for requested source
+- [ ] Apply 20261121130000, 20261206100000, 20261206110000, and 20261206130000 individually in that order. Blocked: all four source files are absent from checkout f95e92c582e5d2816805f2dbb94062898f6156cc; no migration attempted.
+- [ ] Deploy agent-mcp, analyze-resume, generate-interview-coach, public-api, reconcile-stripe, recover-purchase, retry-failed-deliveries, and send-search-digest; verify the eight requested OPTIONS build markers. Blocked: checkout carries older function builds; do not deploy them in place of the requested versions.
+- [ ] Check whether the live frontend serves the deployment commit; publish only if needed after migrations and function verification. Blocked: requested deployment source is not yet available.
+
 # Deployment checklist dce1abd09
 - [x] Apply eight unchanged migrations in uploaded order (drizzle 0275–0282); all self-checks passed, every copy byte-exact, no retries or staging. Never-apply list untouched.
 - [x] Deploy all 14 functions and verify every requested OPTIONS build (all 200, all exact matches).
