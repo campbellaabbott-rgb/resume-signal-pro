@@ -185,9 +185,9 @@ import {
   negotiatedVersion,
   wantsEventStream,
 } from "./protocol.ts";
-// A tool's arguments read as the caller meant them, or refused by name; a
-// value left empty is not sent (items 2, 11 and 12).
-import { BACKSTOPPED_FILTERS, dropUnsent, isSent, readFilterValues, readToolArgs, splitIds, type ArgNotes, type DeclaredArg } from "./tool-args.ts";
+// A tool's arguments read as the caller meant them, or answered without and
+// said first (owner D3); a value left empty is not sent (items 2, 11 and 12).
+import { BACKSTOPPED_FILTERS, dropUnsent, isSent, readFilterValues, readToolArgs, splitIds, type ArgNotes, type ArgOutcome, type DeclaredArg } from "./tool-args.ts";
 // A country given by name, read as its code from a fixed table (item 3). A
 // byte-identical copy of public-api's module.
 import { COUNTRY_FIX, countryArg } from "./country-names.ts";
@@ -382,7 +382,7 @@ const SUPPORTED_METHODS = ["initialize", "tools/list", "tools/call", "prompts/li
 // 2026-11-12.2 (the round's integration, S14X-052): fit_resume's unscored names a third reason job-fit 2026-11-12.2 sends, no_resume_terms (none of the terms the scorer reads were found in the résumé).
 // 2026-11-18.2 (lane SH, OD14-ASHBY shared half, 2026-11-18): apply_myself carries the shared form reader that answers an Ashby posting "withheld" before its cache or any request whatever vendor list is passed, with its Ashby reader deleted; the connector already left Ashby out of its own list in 2026-11-18.1, which round B's integration branch carries without the shared stop.
 // 2026-11-19.1 (OD16, lane api4/od16-federal, owner's yes of 2026-11-18): U.S. federal rows leave the withheld list; search, debug, fit, get_job, get_jobs, apply_myself and check_apply_support hand on a federal posting only once the agency's who-may-apply statement is stored (read beside the page, fenced), each card carrying a federal block (agency, who may apply, closing date, on our board since, official link, OPM's notice) and no postedAt, and each result federalAttribution with the date the board last read the feed; check_jobs_open checks federal ids. Needs job-board .104's migration 20261119110000 (who_may_apply) applied first.
-// 2026-11-21.1 (lane fix/1121-connector-errors, the owner's "people are getting errors when using the mcp and API - lets fix it"): a search page refills past withheld rows (at most two more reads, the shortfall only, 3 s to start and 6 s to answer) and its total leaves them out only when a count read proves the same search; a wrong argument name is read as the one meant or refused naming the names the tool takes, and an empty value is not sent; a country is read by name (USA, UK, Ireland) or refused naming both readings; a keyless limit above the cap says the page it got; both employer tools take an employer's name and resolve it in one board call, a name they cannot place being a row with candidates; key_status answers with no key; a revoked key on a keyless tool gets its answer, keyless; full-time, junior and on-site reach the board as its values and posted today is not every posting; ids in one comma string are checked one by one; a refused call is counted under its tool or under unknown; the card keeps the employer match label and the guide says total counts title, employer-name and department matches; every search answer carries feedFreshness; initialize answers 2025-11-25, 2025-06-18, 2025-03-26 and 2024-11-05 as asked, a 2025-03-26 batch is read, a 2026-07-28 request is told to fall back to initialize, and an SSE client is told the transport.
+// 2026-11-21.1 (lane fix/1121-connector-errors, the owner's "people are getting errors when using the mcp and API - lets fix it"): a search page refills past withheld rows (at most two more reads, the shortfall only, 3 s to start and 6 s to answer) and its total leaves them out only when a count read proves the same search; a wrong argument name is read as the one meant and said back, and (owner D3) a name a search tool does not take is answered without, said on the answer's first line with a did-you-mean and counted would_refuse, never refused in this build, sponsorship and seniority names get fixed answers, string booleans and spec-3's value synonyms are read and said, a corrected call is counted corrected (migration 20261206130000 first), and an empty value is not sent; a country is read by name (USA, UK, Ireland) or refused naming both readings; a keyless limit above the cap says the page it got; both employer tools take an employer's name and resolve it in one board call, a name they cannot place being a row with candidates; key_status answers with no key; a revoked key on a keyless tool gets its answer, keyless; full-time, junior and on-site reach the board as its values and posted today is not every posting; ids in one comma string are checked one by one; a refused call is counted under its tool or under unknown; the card keeps the employer match label and the guide says total counts title, employer-name and department matches; every search answer carries feedFreshness; initialize answers 2025-11-25, 2025-06-18, 2025-03-26 and 2024-11-05 as asked, a 2025-03-26 batch is read, a 2026-07-28 request is told to fall back to initialize, and an SSE client is told the transport.
 const FN_BUILD = "agent-mcp.2026-11-21.1";
 /** Where a free key is minted — the page every refusal in this file points at. */
 const MINT_URL = "https://resumebooster.work/data-api";
@@ -2343,7 +2343,7 @@ function guideText(edition: Edition, keyed: boolean): string {
     `- \`total\` counts postings whose title, employer name or department matched the words; \`relatedTotal\` counts those matched only in their description. A row's \`matchScope\` says where it matched (\`title\`, \`employer\` or \`description\`; many rows carry none), and \`titleTotal\` and \`employerTotal\` split \`total\` when the board gives them. \`matchNote\` means every row on the page says it matched somewhere other than its title. Say which you mean.`,
     `- \`withheldTotal\` is how many of the board's matches this server may not hand on, already taken out of \`total\`; \`totalIncludesWithheld\` means \`total\` still counts them. \`refillReads\` counts the extra board reads that topped a page up after rows were withheld, and \`pageShortBecause\` says why a page holds fewer rows than its limit; page on with \`nextOffset\` as given.`,
     `- \`feedFreshness\` is how recently the employer feeds behind live postings were re-read (half within \`p50Minutes\`, 95% within \`p95Minutes\`, measured at \`asOf\`): our re-check cadence, never a posting's age.`,
-    `- \`argumentsRead\` says which argument was read as which (a \`keyword\` as \`query\`), and \`ignoredArguments\` names any not used, with why. \`countryRead\` and \`valuesRead\` say how a country name or a filter value was read (USA as US, full-time as full_time), and \`countryNote\` adds what a name stood for. \`limitAsked\`, \`limitApplied\` and \`limitNote\` mean the page was cut to its cap: ask for the next one with \`nextOffset\`.`,
+    `- \`notApplied\` opens an answer that was sent a name the tool does not take (or a filter it cannot apply): that name was not applied, so tell the person what the results do not reflect, and resend it under the name \`didYouMean\` offers when there is one. \`argumentsRead\` says which argument was read as which (a \`keyword\` as \`query\`), and \`ignoredArguments\` names any not used. \`countryRead\` and \`valuesRead\` say how a country name or a value was read (USA as US, full-time as full_time, remote "yes" as true, sort "date" as newest), and \`countryNote\` adds what a name stood for. \`limitAsked\`, \`limitApplied\` and \`limitNote\` mean the page was cut to its cap: ask for the next one with \`nextOffset\`.`,
     `- \`postedAt\` is the date the employer's own hiring system gives for the posting, not when this board first saw it; it is absent when the feed states none, which does not make a posting old.`,
     `- \`locationInterpreted\` says what was read out of the query into a filter (a place, remote, a date window, an employer) and \`from\` the words as typed; \`sponsorshipNote\` means this board cannot filter by visa sponsorship, so never say a posting sponsors unless its own text does. \`notSearched\` means the search named nothing the board can look for (only sponsorship words): ask the person for a role or a place.`,
     `- \`federal\` on a card marks a U.S. federal announcement from USAJOBS: the agency is the employer, \`whoMayApply\` is the agency's own statement of who may apply (some are only for current federal staff, veterans or another group: say so before suggesting it), it is open until the agency's closing date (\`closesAt\`), and it has no \`postedAt\` because USAJOBS moves that date when it reposts an announcement; \`onBoardSince\` is when it reached this board, never its age. Apply only through the announcement's own instructions at \`officialUrl\`, and pass on \`notice\`: this is not an official copy.`,
@@ -5189,6 +5189,8 @@ async function answerUnkeyed(
   toolName: string,
   args: Record<string, unknown>,
   params: Record<string, unknown> = {},
+  /** How an answered call is counted: ok, or what the argument reader said (D3: corrected, would_refuse). */
+  answered: ArgOutcome = "ok",
 ): Promise<{ rpc: unknown; headers: Record<string, string> }> {
   const A = ANON_ALLOWANCE;
   // Here, not at the door: a junk bearer or an unrecognised key also answers keyless (S13-103).
@@ -5359,7 +5361,7 @@ async function answerUnkeyed(
       throw e;
     }
     if (answeredNotFound(toolName, out)) giveBack("unknown id");
-    countCall(client, partition, "keyless", toolName, "ok");
+    countCall(client, partition, "keyless", toolName, answered);
 
     const bucketLeft = Math.max(0, d.bucket_cap - d.bucket_used);
     const shareLeft = Math.max(0, d.share_cap - d.share_used);
@@ -5432,15 +5434,35 @@ function retryAfterOf(reason: unknown): Record<string, string> {
 
 /**
  * The answer with the reader's notes added at its top level (items 2 and 4):
- * rebuilt through toolOk, as withUnkeyedNote rebuilds one, so the text block
- * and structuredContent agree. A refusal, or no note, is returned as it is.
+ * rebuilt through toolOk, as withUnkeyedNote rebuilds one, so the JSON text
+ * block and structuredContent agree. valuesRead is merged with the answer's
+ * own (a filter value the search read). A refusal, or no note, is returned as
+ * it is. Applied LAST, after any other rebuild, so the first line stays first.
+ *
+ * WHAT WAS NOT APPLIED IS SAID FIRST (D3): the reader's notApplied lines open
+ * the answer, so an AI that reads only the top sees that a name it sent was
+ * not applied. On every tool but `search` they are a text block of their own
+ * ahead of the JSON; `search` answers in the fixed one-text-item shape
+ * ChatGPT's research connectors parse as JSON, so there they are the JSON's
+ * first key instead. Either way notApplied leads structuredContent.
  */
-function withArgNotes(rpc: unknown, notes: Record<string, unknown>): unknown {
+function withArgNotes(rpc: unknown, notes: Record<string, unknown>, toolName: string): unknown {
   if (!Object.keys(notes).length) return rpc;
   const r = rpc as { result?: { content?: unknown[]; structuredContent?: Record<string, unknown>; isError?: boolean } };
   const sc = r.result?.structuredContent;
   if (!sc || r.result?.isError) return rpc;
-  return { ...r, result: { ...r.result, ...toolOk({ ...sc, ...notes }) } };
+  const { notApplied, valuesRead, ...rest } = notes as { notApplied?: unknown; valuesRead?: unknown } & Record<string, unknown>;
+  const lines = Array.isArray(notApplied) ? notApplied.map(String) : [];
+  const own = sc.valuesRead && typeof sc.valuesRead === "object" ? sc.valuesRead as Record<string, unknown> : {};
+  const read = { ...own, ...(valuesRead && typeof valuesRead === "object" ? valuesRead as Record<string, unknown> : {}) };
+  const rebuilt = toolOk({
+    ...(lines.length ? { notApplied: lines } : {}),
+    ...sc,
+    ...rest,
+    ...(Object.keys(read).length ? { valuesRead: read } : {}),
+  });
+  if (lines.length && toolName !== "search") rebuilt.content.unshift({ type: "text", text: lines.join("\n") });
+  return { ...r, result: { ...r.result, ...rebuilt } };
 }
 
 /** The names a tool accepts, read off the registry (item 2): its declared ones, plus what its runner also reads. */
@@ -5454,7 +5476,7 @@ function acceptedArgsOf(toolName: string): Record<string, DeclaredArg> {
   if (toolName === "fit_resume") return { ...(SEARCH_PROPERTIES as Record<string, DeclaredArg>), agentReadyOnly: { type: "boolean" }, ...declared };
   return declared;
 }
-/** The tools whose unknown names are refused, and which read `page`. */
+/** The tools whose unknown names are said first and counted would_refuse (D3; refused in a later lane), and which read `page`. */
 const STRICT_ARG_TOOLS: readonly string[] = ["search_jobs", "debug_search", "search", "fit_resume"];
 function argSpecOf(toolName: string) {
   return {
@@ -5937,11 +5959,13 @@ Deno.serve(browserGated(async function answer(req: Request, element?: { message:
   }
 
   // THE ARGUMENTS, BEFORE ANY COUNT: a wrong argument costs nothing. A name
-  // the tool does not declare is read under its obvious name or refused by
-  // name, never dropped; a value left empty is not sent (item 2). A refusal
-  // is counted by what refused it, never by who (item 13).
+  // the tool does not declare is read under its obvious name, or answered
+  // without and said first (D3), never dropped; a value left empty is not
+  // sent (item 2). A refusal is counted by what refused it, never by who
+  // (item 13); an answer by what the reader said (corrected, would_refuse).
   let toolArgs: Record<string, unknown> = {};
   let argNotes: ArgNotes = {};
+  let argOutcome: ArgOutcome = "ok";
   if (!read) {
     const sentArgs = (params as { arguments?: unknown }).arguments;
     if (toolName === "fit_resume" && !bearer) {
@@ -5955,6 +5979,7 @@ Deno.serve(browserGated(async function answer(req: Request, element?: { message:
       }
       toolArgs = reading.args;
       argNotes = reading.notes;
+      argOutcome = reading.outcome;
     }
     try {
       checkArgs(toolName, toolArgs, !bearer);
@@ -5964,6 +5989,14 @@ Deno.serve(browserGated(async function answer(req: Request, element?: { message:
         return json(rpcResult(id, toolErr(e.message, e.fix)));
       }
       throw e;
+    }
+    // A filter value read under its synonym (wfh as remote), or a country
+    // read from its name (Ireland as IE), is a correction too: both are said
+    // back (valuesRead, countryRead), so both are counted corrected (D3).
+    if (argOutcome === "ok" && (toolName === "search_jobs" || toolName === "debug_search" || toolName === "fit_resume")) {
+      const v = readFilterValues(toolArgs);
+      if (v.ok && Object.keys(v.valuesRead).length) argOutcome = "corrected";
+      else if (Object.keys(countryArg(toolArgs.country).read).length) argOutcome = "corrected";
     }
   }
 
@@ -5975,7 +6008,7 @@ Deno.serve(browserGated(async function answer(req: Request, element?: { message:
     const { state } = await probeSignIn();
     if (state !== "on") {
       const { rpc, headers } = await answerUnkeyed(client, req, id, toolName, toolArgs, params);
-      return json(withArgNotes(rpc, argNotes), 200, headers);
+      return json(withArgNotes(rpc, argNotes, toolName), 200, headers);
     }
   }
 
@@ -6087,7 +6120,7 @@ Deno.serve(browserGated(async function answer(req: Request, element?: { message:
     // refusals are its answer, said as the key's state, never an error.
     if (!read && toolName === "key_status" && (!d || !d.is_allowed)) {
       countCall(client, (await egressHost(callerAddress(req.headers), isChatGptCaller(req.headers, params))) ?? "other", "key", toolName, "refused_key");
-      return json(withArgNotes(rpcResult(id, toolOk(refusedKeyStatus(d, edition))), argNotes), 200, { ...rateHeaders, ...retryAfterOf(d?.deny_reason) });
+      return json(withArgNotes(rpcResult(id, toolOk(refusedKeyStatus(d, edition))), argNotes, toolName), 200, { ...rateHeaders, ...retryAfterOf(d?.deny_reason) });
     }
     if (!unknownKeyNote && (!d || !d.is_allowed)) {
       const reason = d?.deny_reason ?? "unknown_key";
@@ -6118,10 +6151,12 @@ Deno.serve(browserGated(async function answer(req: Request, element?: { message:
     if (!d) {
       // No key, one of ANON_TOOLS: counted by mcp_anon_check_v2, then
       // answered with the allowance in its unkeyed block. See answerUnkeyed.
-      const { rpc, headers } = await answerUnkeyed(client, req, id, toolName, toolArgs, params);
-      // What the argument reader read, and a limit cut to the keyless page (items 2 and 4).
-      const noted = withArgNotes(rpc, { ...argNotes, ...limitNotesOf(toolName, toolArgs, true, edition) });
-      return json(unknownKeyNote ? withUnkeyedNote(noted, unknownKeyNote) : noted, 200, headers);
+      const { rpc, headers } = await answerUnkeyed(client, req, id, toolName, toolArgs, params, argOutcome);
+      // What the argument reader read, and a limit cut to the keyless page
+      // (items 2 and 4), added LAST: withUnkeyedNote rebuilds the result, and
+      // the not-applied line must stay its first text block.
+      const keyNoted = unknownKeyNote ? withUnkeyedNote(rpc, unknownKeyNote) : rpc;
+      return json(withArgNotes(keyNoted, { ...argNotes, ...limitNotesOf(toolName, toolArgs, true, edition) }, toolName), 200, headers);
     }
     // A live pass on a key: record how it was activated, once.
     await noteActivatedVia(client, d, oauthSub ? oauthVia(oauthClient) : "key", req.headers.get("user-agent") ?? "");
@@ -6134,8 +6169,8 @@ Deno.serve(browserGated(async function answer(req: Request, element?: { message:
       ? toolOk(await runKeyStatus(client, d, ctx))
       : await callTool(client, d.api_key_id ?? "", d.key_tier, toolName, toolArgs, ctx);
     if (result === null) return json(rpcError(id, -32602, `unknown tool: ${toolName} — call tools/list for the names`));
-    countCall(client, host, "key", toolName, (result as { isError?: boolean }).isError ? "refused_key" : "ok");
-    return json(withArgNotes(rpcResult(id, result), { ...argNotes, ...limitNotesOf(toolName, toolArgs, false, edition) }), 200, rateHeaders);
+    countCall(client, host, "key", toolName, (result as { isError?: boolean }).isError ? "refused_key" : argOutcome);
+    return json(withArgNotes(rpcResult(id, result), { ...argNotes, ...limitNotesOf(toolName, toolArgs, false, edition) }, toolName), 200, rateHeaders);
   } catch (e) {
     if (e instanceof ScorerLimited) {
       // Not an internal error, and not retryable in a minute: the scorer's

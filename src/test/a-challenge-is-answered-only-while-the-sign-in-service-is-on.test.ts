@@ -514,7 +514,7 @@ describe("every keyed tool says what it needs, a shortlist read with no ids is a
       const callerAddress = () => "";
       const isChatGptCaller = () => false;
       return async function run(toolName, decision) {
-        const id = 1, read = false, toolArgs = {}, params = {}, keyHash = "hash", edition = "other", argNotes = {};
+        const id = 1, read = false, toolArgs = {}, params = {}, keyHash = "hash", edition = "other", argNotes = {}, argOutcome = "ok";
         const client = { rpc() { return { maybeSingle: async () => ({ data: decision, error: null }) }; } };
         const req = { headers: { get() { return ""; } } };
         let d = null;
@@ -557,8 +557,9 @@ describe("every keyed tool says what it needs, a shortlist read with no ids is a
     const gate = between(MCP, "let unknownKeyNote = \"\";", "const friendly: Record<string, [string, string]> = {");
     expect(gate).not.toMatch(/"rate_limited"|"quota_exceeded"|"revoked"/);
     expect(MCP).toMatch(/const UNKNOWN_KEY_NOTE = "The key sent was not recognised \(keys start with rb_live_\); this call ran without it\.";/);
-    // The reader's notes ride on the unkeyed answer first (lane fix/1121-connector-errors, items 2 and 4).
-    expect(MCP).toMatch(/const noted = withArgNotes\(rpc, \{ \.\.\.argNotes, \.\.\.limitNotesOf\(toolName, toolArgs, true, edition\) \}\);\s*return json\(unknownKeyNote \? withUnkeyedNote\(noted, unknownKeyNote\) : noted, 200, headers\);/);
+    // The reader's notes ride on the unkeyed answer LAST (lane fix/1121-connector-errors, items 2 and 4):
+    // withUnkeyedNote rebuilds the result, and a not-applied line (owner D3) must stay its first text block.
+    expect(MCP).toMatch(/const keyNoted = unknownKeyNote \? withUnkeyedNote\(rpc, unknownKeyNote\) : rpc;\s*return json\(withArgNotes\(keyNoted, \{ \.\.\.argNotes, \.\.\.limitNotesOf\(toolName, toolArgs, true, edition\) \}, toolName\), 200, headers\);/);
     // The note lands in the unkeyed block of a real answer, and a refusal is untouched: run the builder itself.
     const src = `${between(MCP, "const toolOk = (data: unknown) =>", "\nconst toolErr")}\n${functionText(MCP, "withUnkeyedNote")}\nreturn withUnkeyedNote;`;
     const js = ts.transpileModule(src, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText;
