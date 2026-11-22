@@ -69,7 +69,6 @@ export function AIGenerationProgress({
   const { t } = useTranslation();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [progress, setProgress] = useState(0);
-  const [startTime] = useState(Date.now());
 
   useEffect(() => {
     if (!isVisible) {
@@ -78,11 +77,16 @@ export function AIGenerationProgress({
       return;
     }
 
+    // The clock starts when the generation does (S10-151), not when the
+    // overlay mounted: the recovery form keeps it mounted, hidden, while the
+    // buyer fills it in, and a buyer who took 14 s or more saw 95%
+    // "Finalizing" the moment they pressed generate.
+    const startedAt = Date.now();
     // Simulate progress through steps
     const totalDuration = steps.reduce((acc, step) => acc + step.duration, 0);
-    
+
     const progressInterval = setInterval(() => {
-      const elapsed = Date.now() - startTime;
+      const elapsed = Date.now() - startedAt;
       const newProgress = Math.min((elapsed / totalDuration) * 100, 95); // Cap at 95% until actually complete
       setProgress(newProgress);
 
@@ -101,7 +105,7 @@ export function AIGenerationProgress({
     }, 100);
 
     return () => clearInterval(progressInterval);
-  }, [isVisible, startTime]);
+  }, [isVisible]);
 
   if (!isVisible) return null;
 

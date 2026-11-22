@@ -27,6 +27,7 @@
       "jobDescription": "This analysis could not compare your CV with the job posting this time, so that part is left out. Everything else in the analysis is complete.",
       "linkedIn": "This analysis could not review your LinkedIn profile this time, so that part is left out. Everything else in the analysis is complete."
     },
+    "alsoAskedInPosting": "Also asked for in the posting",
     "page": {
       "emailSentTitle": "Email Sent",
       "emailSentBody": "A copy was sent to your email",
