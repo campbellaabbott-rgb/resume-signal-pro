@@ -47,6 +47,10 @@
     "agentBackToAccount": "Volver a la cuenta",
     "agentTitle": "Agente de postulación",
     "agentHowItWorks": "Cómo funciona",
-    "agentSections": "Secciones del agente"
+    "agentSections": "Secciones del agente",
+    "trackerShowing": "Se muestran tus {{shown}} más recientes de {{total}}",
+    "trackerLoadMore": "Cargar postulaciones anteriores",
+    "trackerLoadMoreFailed": "No pudimos cargar tus postulaciones anteriores. Inténtalo de nuevo.",
+    "digestSaveFailed": "No se pudo guardar ese cambio en tu alerta por correo, así que quedó como estaba. Inténtalo de nuevo."
   }
 }

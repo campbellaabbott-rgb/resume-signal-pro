@@ -47,6 +47,10 @@
     "agentBackToAccount": "Back to account",
     "agentTitle": "Apply agent",
     "agentHowItWorks": "How it works",
-    "agentSections": "Agent sections"
+    "agentSections": "Agent sections",
+    "trackerShowing": "Showing your newest {{shown}} of {{total}}",
+    "trackerLoadMore": "Load older applications",
+    "trackerLoadMoreFailed": "Couldn't load your older applications. Try again.",
+    "digestSaveFailed": "Couldn't save that change to your email alert, so it is back as it was. Try again."
   }
 }

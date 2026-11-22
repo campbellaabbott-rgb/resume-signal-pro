@@ -20,6 +20,17 @@
 //   S14X-100  the download carries what only the server can read.
 //   S14X-230  a refused delete links the billing page it names.
 //   S14X-255  dates and counts print in the reader's language.
+//
+// The 2026-11-19 reconcile (account lane):
+//   S10-066   with no matching résumé pinned, the gap report, the morning
+//             queue, the apply copilot and the apply kit read the newest scan
+//             that holds its text. A homepage rescan stores none, and reading
+//             the newest scan left all four with no CV.
+//   S10-069   the tracker reads its exact count and pages: the header says how
+//             many there are, and "Load older applications" reaches the rest.
+//   S11-095   a saved job moved on to any other stage is dated the day it
+//             moved, in the reader's own calendar; the "which resume gets
+//             interviews" table counts only rows that were sent.
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
@@ -247,6 +258,22 @@ const STATUS_STYLES: Record<string, string> = {
 /** A posting the closure log says is gone or going: nothing offers to apply to it (S14X-200). */
 const POSTING_GONE = new Set(["came_down", "going_down"]);
 
+/** How many tracker rows one read brings (S10-069). */
+const TRACKER_PAGE = 100;
+
+/** One page of the tracker, newest first, with the exact count beside it (S10-069). */
+const readTrackerPage = (from: number) =>
+  supabase.from("user_applications").select("*", { count: "exact" })
+    .order("created_at", { ascending: false })
+    // Rows written in one statement share created_at: the id keeps the order
+    // the same from one page to the next, so no row is read twice or skipped.
+    .order("id", { ascending: false })
+    .range(from, from + TRACKER_PAGE - 1);
+
+/** Today in the reader's own calendar, as user_applications.applied_at holds it (a date, S11-095). */
+const localDay = (d: Date = new Date()): string =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
 /** The fit check refused for its hourly limit (429, or a body saying so), not for an outage (S14X-204). */
 async function fitCheckRateLimited(data: unknown, error: unknown): Promise<boolean> {
   if ((data as { rateLimited?: unknown } | null)?.rateLimited === true) return true;
@@ -270,6 +297,13 @@ export default function Account() {
   const [applications, setApplications] = useState<Application[]>([]);
   // S14X-258: the scans or the tracker could not be read on the last load.
   const [trackerFailed, setTrackerFailed] = useState(false);
+  // S10-069: how many rows the tracker holds (the read's exact count, kept in
+  // step with adds and deletes), and where the next page starts: the rows
+  // already read, moved by one for each row added above them or deleted.
+  const [appsTotal, setAppsTotal] = useState<number | null>(null);
+  const [appsOffset, setAppsOffset] = useState(0);
+  const [appsMore, setAppsMore] = useState(false);
+  const [appsLoadingMore, setAppsLoadingMore] = useState(false);
   // Employer lifecycle facts (fills vs re-listing churn) for tracked rows —
   // most actionable exactly where you're waiting to hear back. Token comes
   // from the board posting id embedded in job_id (source:token:externalId).
@@ -311,6 +345,11 @@ export default function Account() {
   // The résumé text matching should use, in explicit-choice-first order.
   const matchingResume = matching.text
     ?? (matching.scanId ? scans.find((s) => s.id === matching.scanId)?.resume_text ?? null : null);
+  // With nothing pinned, the newest scan that HOLDS its text (S10-066). A
+  // homepage rescan stores no text, so the newest scan alone left the gap
+  // report, the morning queue and the apply copilot with no CV at all.
+  const scansWithText = useMemo(() => scans.filter((s) => s.resume_text), [scans]);
+  const latestResume = scansWithText[0]?.resume_text ?? null;
   // Application intelligence: does the fit you applied with predict getting an
   // interview? Computed from the tracker; only surfaced with enough applied
   // history to be meaningful (>=5 applied overall, >=3 per tier) — no stats on
@@ -341,8 +380,10 @@ export default function Account() {
   // a stored fit counts only when its row was measured against that résumé;
   // other rows with a posting are measured again for this tab, and every
   // measured row is in the denominator, fully matched ones included.
-  const gapResume = matchingResume ?? scans[0]?.resume_text ?? null;
-  const gapBasis = gapBasisScanId(matching, scans);
+  // The basis is the scan that text came from, so a stored fit counts only
+  // when it was measured against the text the report now reads (S10-066).
+  const gapResume = matchingResume ?? latestResume;
+  const gapBasis = gapBasisScanId(matching, scansWithText);
   const [freshFits, setFreshFits] = useState<Record<string, Fit>>({});
   // What the re-measurement depends on: a status change or a note does not
   // start it again, a new posting or another version does.
@@ -385,6 +426,8 @@ export default function Account() {
   const skillGap = useMemo(() => skillGapOf(applications, gapBasis, freshFits), [applications, gapBasis, freshFits]);
   // ACC1: pipeline lane filter over the tracker ("" = all stages).
   const [appFilter, setAppFilter] = useState<string>("");
+  // Every row the account tracks, read or not yet read (S10-069).
+  const trackedTotal = appsTotal !== null ? Math.max(appsTotal, applications.length) : applications.length;
   const stageCounts = useMemo(() => {
     const c: Record<string, number> = {};
     for (const a of applications) c[a.status] = (c[a.status] ?? 0) + 1;
@@ -521,7 +564,7 @@ export default function Account() {
     const [scansRes, accountRes, appsRes, profileRes] = await Promise.all([
       supabase.from("user_scans").select("*").order("created_at", { ascending: false }).limit(50),
       supabase.functions.invoke("get-account-data").catch(() => ({ data: null, error: true })),
-      supabase.from("user_applications").select("*").order("created_at", { ascending: false }).limit(100),
+      readTrackerPage(0),
       // matching_* columns postdate the generated DB types — untyped access,
       // same pattern as other fresh columns until Lovable regenerates types.ts.
       (supabase as unknown as { from: (t: string) => any }).from("user_profiles")
@@ -544,6 +587,12 @@ export default function Account() {
 
       setScans(cloudScans);
       setApplications(apps);
+      // The exact count, never the page's length (S10-069): 150 rows read as
+      // "100 tracked" and the oldest fifty were out of reach.
+      const total = (appsRes as { count?: number | null }).count;
+      setAppsTotal(typeof total === "number" ? Math.max(total, apps.length) : null);
+      setAppsOffset(apps.length);
+      setAppsMore(typeof total === "number" ? apps.length < total : apps.length === TRACKER_PAGE);
     }
     const prof = profileRes.data as { target_score?: number; matching_scan_id?: string | null; matching_resume_text?: string | null } | null;
     setTargetScore(prof?.target_score ?? null);
@@ -579,7 +628,9 @@ export default function Account() {
             const { company_token: _token, ...row } = r;
             map[r.company_token] = row;
           }
-          setAppHealth(map);
+          // Merged, not replaced: an older page read later (S10-069) adds its
+          // employers without taking away the first page's.
+          setAppHealth((prev) => ({ ...prev, ...map }));
         })
         .catch(() => { /* chips are additive */ });
     }
@@ -636,6 +687,38 @@ export default function Account() {
     } catch { /* freshness is a bonus signal — never surface an error for it */ }
   };
 
+  // S10-069: the next page of older rows. A row already on the page (one
+  // another tab added moves the rest down) is not shown twice.
+  const loadMoreApplications = async () => {
+    if (!session || appsLoadingMore) return;
+    setAppsLoadingMore(true);
+    try {
+      const res = await readTrackerPage(appsOffset);
+      if (res.error) {
+        toast.error(t("accountView.trackerLoadMoreFailed", "Couldn't load your older applications. Try again."));
+        return;
+      }
+      const rows = (res.data as unknown as Application[] | null) ?? [];
+      const have = new Set(applications.map((a) => a.id));
+      const fresh = rows.filter((r) => !have.has(r.id));
+      setApplications((prev) => {
+        const held = new Set(prev.map((a) => a.id));
+        return [...prev, ...fresh.filter((r) => !held.has(r.id))];
+      });
+      const nextOffset = appsOffset + rows.length;
+      setAppsOffset(nextOffset);
+      const total = typeof res.count === "number" ? res.count : null;
+      if (total !== null) setAppsTotal(Math.max(total, applications.length + fresh.length));
+      // An empty page ends it whatever the count says (rows deleted elsewhere).
+      setAppsMore(rows.length > 0 && (total !== null ? nextOffset < total : rows.length === TRACKER_PAGE));
+      if (fresh.length) void checkPostingFreshness(fresh);
+    } catch {
+      toast.error(t("accountView.trackerLoadMoreFailed", "Couldn't load your older applications. Try again."));
+    } finally {
+      setAppsLoadingMore(false);
+    }
+  };
+
   useEffect(() => { loadAll(); }, [loadAll]);
 
   // Try again after a failed read of credits and orders (S12-155).
@@ -672,21 +755,36 @@ export default function Account() {
       scan_id: version?.id ?? null,
       scan_score: version?.ats_score ?? null,
     }).select().single();
-    if (data) setApplications([data as unknown as Application, ...applications]);
+    if (data) {
+      setApplications([data as unknown as Application, ...applications]);
+      // The new row is the newest: every older one moves down a place (S10-069).
+      setAppsOffset((o) => o + 1);
+      setAppsTotal((n) => (n === null ? n : n + 1));
+    }
     setNewApp({ company: "", role: "" });
   };
 
   const updateAppStatus = async (id: string, status: string) => {
     const now = new Date().toISOString();
-    setApplications(applications.map(a => a.id === id ? { ...a, status, status_changed_at: now } : a));
+    const before = applications.find((a) => a.id === id);
+    // A saved job moved on was applied to the day it moved (S11-095). The row
+    // kept the day it was saved, which "applied this week", the weekly bars
+    // and the row's own date all read as the application date. A date column,
+    // written in the reader's calendar: an evening move west of UTC is today.
+    const moved: { status: string; applied_at?: string } = before?.status === "saved" && status !== "saved"
+      ? { status, applied_at: localDay() }
+      : { status };
+    setApplications(applications.map(a => a.id === id ? { ...a, ...moved, status_changed_at: now } : a));
     // status_changed_at may lag the migration one publish — status still lands.
-    const { error } = await supabase.from("user_applications").update({ status, status_changed_at: now }).eq("id", id);
+    const { error } = await supabase.from("user_applications").update({ ...moved, status_changed_at: now }).eq("id", id);
     if (error) {
-      const { error: e2 } = await supabase.from("user_applications").update({ status }).eq("id", id);
+      const { error: e2 } = await supabase.from("user_applications").update(moved).eq("id", id);
       if (e2) {
         // Both writes failed — revert the optimistic UI and say so, instead
         // of showing a status the DB refused (audit 2026-07-25).
-        setApplications((prev) => prev.map((a) => a.id === id ? { ...a, status: applications.find((x) => x.id === id)?.status ?? a.status } : a));
+        setApplications((prev) => prev.map((a) => a.id === id
+          ? { ...a, status: before?.status ?? a.status, applied_at: before?.applied_at ?? a.applied_at }
+          : a));
         toast.error(t("accountPage.statusSaveFailed", "Couldn't save that status — please try again."));
       }
     }
@@ -706,6 +804,9 @@ export default function Account() {
 
   const deleteApplication = async (id: string) => {
     setApplications(applications.filter(a => a.id !== id));
+    // One row fewer above the next page (S10-069).
+    setAppsOffset((o) => Math.max(0, o - 1));
+    setAppsTotal((n) => (n === null ? n : Math.max(0, n - 1)));
     await supabase.from("user_applications").delete().eq("id", id);
   };
 
@@ -1065,6 +1166,7 @@ export default function Account() {
                           onClick={(e) => e.preventDefault()}
                           maxLength={60}
                           placeholder={t("accountPage.namePlaceholder", "Name this version…")}
+                          aria-label={t("accountPage.namePlaceholder", "Name this version…")}
                           className="w-full bg-background border border-border rounded px-1.5 py-0.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
                         />
                       ) : (
@@ -1193,6 +1295,7 @@ export default function Account() {
                 onChange={(e) => setPasteDraft(e.target.value)}
                 rows={6}
                 placeholder={t("accountPage.matchingPastePlaceholder", "Paste your résumé text here (plain text)…")}
+                aria-label={t("accountPage.matchingPastePlaceholder", "Paste your résumé text here (plain text)…")}
                 className="w-full rounded-lg border border-border bg-background p-2.5 text-[12px] focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
               <button
@@ -1230,7 +1333,7 @@ export default function Account() {
           <MorningQueuePanel
             userId={user.id}
             email={user.email ?? null}
-            defaultResume={matchingResume ?? scans[0]?.resume_text ?? null}
+            defaultResume={matchingResume ?? latestResume}
           />
         )}
 
@@ -1261,7 +1364,7 @@ export default function Account() {
           apps={applications}
           resumeFor={(a) => {
             const v = a.scan_id ? scans.find((s) => s.id === a.scan_id) : null;
-            return v?.resume_text ?? matchingResume ?? scans[0]?.resume_text ?? null;
+            return v?.resume_text ?? matchingResume ?? latestResume;
           }}
           proActive={pro.active}
           onKit={(appId, kit) => setApplications((prev) => prev.map((a) => (a.id === appId ? { ...a, kit } : a)))}
@@ -1378,13 +1481,14 @@ export default function Account() {
           <div className="flex items-center gap-2 mb-3">
             <Briefcase className="w-4 h-4 text-primary" />
             <h2 className="font-semibold text-foreground text-sm">{t("accountPage.tracker", "Application tracker")}</h2>
-            <span className="ml-auto text-xs text-muted-foreground">{t("accountPage.tracked", "{{count}} tracked", { count: applications.length })}</span>
+            <span className="ml-auto text-xs text-muted-foreground" data-tracked-count>{t("accountPage.tracked", "{{count}} tracked", { count: trackedTotal })}</span>
           </div>
           <div className="flex gap-2 mb-3">
             <input
               value={newApp.company}
               onChange={(e) => setNewApp({ ...newApp, company: e.target.value })}
               placeholder={t("accountPage.phCompany", "Company")}
+              aria-label={t("accountPage.phCompany", "Company")}
               className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
             <input
@@ -1392,6 +1496,7 @@ export default function Account() {
               onChange={(e) => setNewApp({ ...newApp, role: e.target.value })}
               onKeyDown={(e) => { if (e.key === "Enter") addApplication(); }}
               placeholder={t("accountPage.phRole", "Role")}
+              aria-label={t("accountPage.phRole", "Role")}
               className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
             <button
@@ -1502,7 +1607,7 @@ export default function Account() {
             <div className="flex flex-wrap items-center gap-1.5 mb-3">
               <button type="button" onClick={() => setAppFilter("")}
                 className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${appFilter === "" ? "border-primary bg-primary/10 text-primary font-semibold" : "border-border text-muted-foreground hover:text-foreground"}`}>
-                {t("accountPage.laneAll", "All")} {applications.length}
+                {t("accountPage.laneAll", "All")} {trackedTotal}
               </button>
               {APP_STATUSES.filter((st) => (stageCounts[st] ?? 0) > 0).map((st) => (
                 <button key={st} type="button" onClick={() => setAppFilter(appFilter === st ? "" : st)}
@@ -1854,7 +1959,7 @@ export default function Account() {
                   {(a.job_posting || version?.resume_text) && (
                     <ApplyKitPanel
                       jobPosting={a.job_posting ?? ""}
-                      resumeText={version?.resume_text ?? scans[0]?.resume_text ?? ""}
+                      resumeText={version?.resume_text ?? latestResume ?? ""}
                       proActive={pro.active}
                     />
                   )}
@@ -1868,6 +1973,7 @@ export default function Account() {
                         onChange={(e) => setFitPosting(e.target.value)}
                         rows={3}
                         placeholder={t("accountPage.fitPlaceholder", "Paste the job posting here…")}
+                        aria-label={t("accountPage.fitPlaceholder", "Paste the job posting here…")}
                         className="w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-foreground mb-1.5"
                       />
                       <button
@@ -1893,12 +1999,30 @@ export default function Account() {
                 );
               })}
             </div>
+            {/* The older rows, a page at a time (S10-069). */}
+            {appsMore && (
+              <div className="mt-2 flex flex-wrap items-center gap-2" data-tracker-more>
+                <span className="text-[11px] text-muted-foreground">
+                  {t("accountView.trackerShowing", "Showing your newest {{shown}} of {{total}}", { shown: fmtCount(applications.length, { lng }), total: fmtCount(trackedTotal, { lng }) })}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void loadMoreApplications()}
+                  disabled={appsLoadingMore}
+                  className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-primary/40 text-primary hover:bg-primary/10 disabled:opacity-50 transition-colors"
+                >
+                  {appsLoadingMore && <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />}
+                  {t("accountView.trackerLoadMore", "Load older applications")}
+                </button>
+              </div>
+            )}
             </>
           )}
 
-          {/* Which resume gets interviews: outcomes grouped by the version sent */}
+          {/* Which resume gets interviews: outcomes grouped by the version sent.
+              A saved row was never sent (S11-095): it is not counted. */}
           {(() => {
-            const linked = applications.filter(a => a.scan_id);
+            const linked = applications.filter(a => a.scan_id && a.status !== "saved");
             if (linked.length === 0) return null;
             const byVersion = new Map<string, { sent: number; interviews: number; offers: number }>();
             for (const a of linked) {

@@ -47,6 +47,10 @@
     "agentBackToAccount": "Bumalik sa account",
     "agentTitle": "Apply agent",
     "agentHowItWorks": "Paano ito gumagana",
-    "agentSections": "Mga seksyon ng agent"
+    "agentSections": "Mga seksyon ng agent",
+    "trackerShowing": "Ipinapakita ang pinakabago mong {{shown}} sa {{total}}",
+    "trackerLoadMore": "I-load ang mas lumang mga aplikasyon",
+    "trackerLoadMoreFailed": "Hindi namin ma-load ang mas luma mong mga aplikasyon. Subukan ulit.",
+    "digestSaveFailed": "Hindi na-save ang pagbabagong iyon sa email alert mo, kaya ibinalik ito sa dati. Subukan ulit."
   }
 }

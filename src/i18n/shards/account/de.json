@@ -47,6 +47,10 @@
     "agentBackToAccount": "Zurück zum Konto",
     "agentTitle": "Bewerbungsagent",
     "agentHowItWorks": "So funktioniert es",
-    "agentSections": "Bereiche des Agenten"
+    "agentSections": "Bereiche des Agenten",
+    "trackerShowing": "Du siehst deine neuesten {{shown}} von {{total}}",
+    "trackerLoadMore": "Ältere Bewerbungen laden",
+    "trackerLoadMoreFailed": "Deine älteren Bewerbungen konnten nicht geladen werden. Versuch es noch einmal.",
+    "digestSaveFailed": "Diese Änderung an deinem E-Mail-Alert konnte nicht gespeichert werden, deshalb steht er wieder wie vorher. Versuch es noch einmal."
   }
 }
