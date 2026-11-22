@@ -73,6 +73,16 @@ describe("the reader, judged by the hand list", () => {
     expect(a.errors).toEqual([]);
     expect(a.codes).toEqual(codes);
   });
+  it.each(["N/A", "n/a", "n.a.", "N.A.", "N.A", "I.E.", "i e", "I-E", "G.B.R.", "n/a/m"])(
+    "%s is no country, never the code its letters spell once the punctuation is gone",
+    (typed) => {
+      // Review 2026-11-22: "N/A" folded to "na" and was searched as Namibia.
+      expect(readCountry(typed)).toEqual({ unread: true });
+      const a = countryArg(typed);
+      expect(a.codes).toEqual([]);
+      expect(a.errors.join(" ")).toContain(`country: ${JSON.stringify(typed)} is not a country this board knows.`);
+    },
+  );
   it("six countries are refused, never trimmed; Georgia's refusal names GE and US", () => {
     expect(countryArg("IE,GB,US,DE,FR,ES").errors.length).toBe(1);
     const g = countryArg("Georgia").errors.join(" ");
@@ -192,5 +202,20 @@ describe("/v1 reads the same table", () => {
     expect(fetched.filter((f) => f.url.endsWith("/functions/v1/job-board"))).toHaveLength(0);
     await callApi(handler, "/v1/fit", { method: "POST", body: { resumeText, q: "nurse", country: "Ireland" } });
     expect(fetched.find((f) => f.url.endsWith("/functions/v1/job-board"))?.body).toMatchObject({ country: "IE" });
+  });
+  it("POST /v1/fit {country: ['IE', 'Germany']} searches IE and DE; a country of any other shape answers 400 and searches nothing", async () => {
+    // Review 2026-11-22: country ["IE"] was scored with no country, and no word said so.
+    const resumeText = "Registered nurse with eight years of triage, emergency department care, patient education and charting. ".repeat(2);
+    const listed = await callApi(handler, "/v1/fit", { method: "POST", body: { resumeText, q: "nurse", country: ["IE", "Germany"] } });
+    expect(listed.status, JSON.stringify(listed.body).slice(0, 300)).toBe(200);
+    expect(fetched.find((f) => f.url.endsWith("/functions/v1/job-board"))?.body).toMatchObject({ country: "IE,DE" });
+    for (const country of [353, { code: "IE" }, ["IE", 49], true]) {
+      fetched.length = 0;
+      const bad = await callApi(handler, "/v1/fit", { method: "POST", body: { resumeText, q: "nurse", country } });
+      expect(bad.status, JSON.stringify(country)).toBe(400);
+      expect((bad.body.error as { code: string; message: string }).code).toBe("invalid_value");
+      expect((bad.body.error as { message: string }).message).toMatch(/^country takes a code or a name/);
+      expect(fetched.filter((f) => f.url.endsWith("/functions/v1/job-board"))).toHaveLength(0);
+    }
   });
 });

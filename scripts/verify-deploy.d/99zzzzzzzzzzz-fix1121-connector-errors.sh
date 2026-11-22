@@ -59,7 +59,8 @@
 #         neither;
 #   CE12  (uncounted) the guide never says total counts title matches only,
 #         and says notApplied opens an answer that was sent a name the tool
-#         does not take (owner D3: said and counted, not refused, this lane);
+#         does not take (owner D3: said and counted, not refused, this lane)
+#         and that argumentDidYouMean offers the name meant;
 #   CE13  INFO: refusals counted by what refused them, and the answered
 #         corrected and would_refuse calls (20261206130000), are read by the
 #         owner's query (mcp_calls_daily is service-role only).
@@ -84,9 +85,12 @@ VDCE_MCP="$B/functions/v1/agent-mcp"
 VDCE_FRESH="${RB_API_KEY_FRESH:-}"
 VDCE_REV="${RB_REVOKED_KEY:-${RB:-}}"
 VDCE_GAP="${VERIFY_CALL_GAP:-1.1}"
-# The lane's builds. The merge sets them to max(2026-11-21.1, live + 1).
-VDCE_API_DAY=2026-11-21; VDCE_API_N=1
-VDCE_MCP_DAY=2026-11-21; VDCE_MCP_N=1
+# The lane's builds. The merge sets them to max(2026-11-21.2, live + 1).
+# 2026-11-21.2 is the review's fixes (2026-11-22): the argument suggestion's
+# own key, the refill that a short refill read no longer ends, N/A unread, and
+# /v1/fit reading a country list. .1 lacks them, so it is INFO here.
+VDCE_API_DAY=2026-11-21; VDCE_API_N=2
+VDCE_MCP_DAY=2026-11-21; VDCE_MCP_N=2
 
 rm -f /tmp/vd_ce_*
 
@@ -520,7 +524,10 @@ if (!unsent("CE12", "guide.json")) {
   else if (/whose TITLE match/i.test(text) && !(/employer name/i.test(text) && /department/i.test(text))) say("FAIL", "CE12 the guide says total counts postings whose TITLE matches, without naming the employer name and department it also counts");
   else if (!(/employer name/i.test(text) && /department/i.test(text))) say("FAIL", "CE12 the guide does not say what total counts (title, employer name or department)");
   else say("PASS", "CE12 the guide says total counts title, employer name or department matches");
-  if (text && /`notApplied` opens an answer/.test(text) && /`didYouMean`/.test(text)) say("PASS", "CE12 the guide says notApplied opens an answer sent a name the tool does not take, and what didYouMean offers");
+  // The suggestion for a misspelt argument name is argumentDidYouMean; didYouMean
+  // is the board's spelling of the search words, a string in the schema.
+  if (text && /`notApplied` opens an answer/.test(text) && /`argumentDidYouMean`/.test(text)) say("PASS", "CE12 the guide says notApplied opens an answer sent a name the tool does not take, and that argumentDidYouMean offers the name meant");
+  else if (text && /`notApplied` opens an answer/.test(text)) say("FAIL", "CE12 the guide says to resend a misspelt name under the name didYouMean offers, without naming argumentDidYouMean (didYouMean is the board's spelling suggestion for the search words)");
   else if (text) say("FAIL", "CE12 the guide does not say that notApplied opens an answer sent a name the tool does not take (owner D3: such a name is answered without, said first and counted)");
 }
 

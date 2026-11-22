@@ -638,7 +638,8 @@ const LIST_FILTERS = [
 // 2026-11-18.2 (lane SH, OD14-ASHBY shared half, 2026-11-18): the shared form reader answers an Ashby posting "withheld" before its cache or any request whatever vendor list a caller passes, and its Ashby reader is deleted; /v1 answers form.source "not-read-on-this-surface" for Ashby as 2026-11-18.1 did through its own list. A build of its own, because round B's integration branch already carries 2026-11-18.1 without the shared stop, and the verifier tells the two apart only by this stamp.
 // 2026-11-19.1 (OD16, lane api4/od16-federal, owner's yes of 2026-11-18): U.S. federal rows leave the withheld list and are served once the agency's who-may-apply statement is stored (FEDERAL_GATE_OR in SQL, and in memory on the proxied paths), with closes_at, who_may_apply, hiring_paths, a federal block (agency, official link, on_board_since, open until the agency's closing date, OPM's notice) and first_seen null on /v1/jobs; meta.attribution names OPM's credit and our retrieval date; /v1/companies credits each agency in federalAgencies; apiVersion 2026-11-19.1. /v1/changes shapes and credits a federal closure as it does an opened row (federal block, first_seen null, meta.attribution.federal with the read date) and names the opened backlog it cannot show in federalCoverage, which the keyless index repeats in federal.changes; coverage.note on /v1/jobs says a federal row is open until the agency's closing date, not that our last read listed it. Before job-board .104's migration 20261119110000 (who_may_apply) is applied, every postings read is sent again without the federal columns and with no federal row (./federal-columns.ts), so this build may deploy first and serves every other vendor as before.
 // 2026-11-21.1 (lane fix/1121-connector-errors, items 1, 3, 4, 7, 9 and 14, the /v1 half): GET /v1/openapi.json (and /openapi.json) answers the OpenAPI document from ./openapi.ts with no key and unmetered, built once per isolate from the router's own constants; an unknown path answers 404 no_such_endpoint before the key is read (./endpoint.ts routeOf), one trailing slash is stripped, and HEAD is GET without a body; the key is read from Authorization or x-api-key (an rb_live_ key in either wins), CORS allows x-api-key, and the root, the 401s and the document carry getAKey and keylessSample {offered: false}, the 401s with WWW-Authenticate; ?country= takes a name or alpha-3 through ./country-names.ts and says disclosures.countryRead, and POST /v1/fit refuses a country it cannot read; disclosures.limitCapped and page.maxLimit on every list route; engine=ranked and POST /v1/fit refill a page the withheld systems thinned (./board-page-fill.ts, at most two reads), page.returned and openedReturned count only rows served; coverage.feedFreshness on /v1/jobs (./feed-freshness.ts, which /v1/stats' feedFreshness now comes from too); match_scope passes employer through.
-const FN_BUILD = "public-api.2026-11-21.1";
+// 2026-11-21.2 (lane fix/1121-connector-errors, the review of 2026-11-22): POST /v1/fit reads a country sent as a list of codes or names, and refuses any other shape that is not a string (it was scored with no country, unsaid); engine=ranked and POST /v1/fit keep refilling a page that withheld rows while it is short, says more and has a refill read left, so engine=ranked names page.pageShortBecause whenever such a page is short; a country typed with punctuation (N/A, n.a.) is a 400, never the code its letters spell (./board-page-fill.ts and ./country-names.ts, the connector's copies).
+const FN_BUILD = "public-api.2026-11-21.2";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -2866,8 +2867,19 @@ async function fitResumeScored(
   }
   const limit = Math.max(1, Math.min(20, Number(body.limit ?? 20) || 20));
   // A COUNTRY IT CANNOT READ IS REFUSED (item 3), never a search scored
-  // without it; a name binds its code from the same table as /v1/jobs.
-  const fitCountry = typeof body.country === "string" ? countryArg(body.country) : null;
+  // without it; a name binds its code from the same table as /v1/jobs. A
+  // list of names or codes is read as one (["IE", "Germany"]), as the
+  // connector reads it; any other shape (a number, an object, a list holding
+  // one) is refused naming what it takes. Review 2026-11-22: country ["IE"]
+  // was scored with no country at all, and no word said so.
+  const sentCountry = body.country;
+  if (
+    sentCountry !== undefined && sentCountry !== null && typeof sentCountry !== "string" &&
+    !(Array.isArray(sentCountry) && sentCountry.every((x) => typeof x === "string"))
+  ) {
+    return fail(400, "invalid_value", `country takes a code or a name as a string ("IE", "Ireland" or "IE,GB"), or a list of them; got ${JSON.stringify(sentCountry).slice(0, 60)}. ${COUNTRY_FIX}`, headers);
+  }
+  const fitCountry = sentCountry === undefined || sentCountry === null ? null : countryArg(sentCountry);
   if (fitCountry && fitCountry.errors.length) return fail(400, "invalid_value", `${fitCountry.errors.join(" ")} ${COUNTRY_FIX}`, headers);
   const startedAt = Date.now();
   const fitBody: Record<string, unknown> = { action: "list", limit, includeFacets: false, q,

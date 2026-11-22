@@ -98,8 +98,13 @@ export type ArgNotes = {
   valuesRead?: Record<string, string | boolean>;
   /** Names not applied to this answer: unknown, fixed-answer, or a filter sent to `search`. */
   ignoredArguments?: string[];
-  /** An unknown name within two edits of a name the tool takes, and that name. */
-  didYouMean?: Record<string, string>;
+  /**
+   * An unknown name within two edits of a name the tool takes, and that name.
+   * Never `didYouMean`: that key is the board's own spelling suggestion for
+   * the search words, a string in search_jobs' outputSchema, and a client
+   * that checks structuredContent against it refused the answer.
+   */
+  argumentDidYouMean?: Record<string, string>;
   /** Said when `page` was read as the first page. */
   pageNote?: string;
 };
@@ -239,7 +244,7 @@ function unknownLine(tool: string, unknown: readonly string[], acceptedNames: re
  * names that land on one accepted name with different values are refused
  * naming both. (4) On the search tools (D3) a name still unknown is never
  * applied and NOT refused: the call is answered without it, the name is in
- * ignoredArguments (with didYouMean when two edits or fewer from a name the
+ * ignoredArguments (with argumentDidYouMean when two edits or fewer from a name the
  * tool takes), the first line says so, and the call counts would_refuse.
  * `search` answers a filter on query alone and says search_jobs takes it.
  * The sponsorship and seniority names get their fixed answers. (4a) On the
@@ -364,7 +369,7 @@ export function readToolArgs(spec: ToolArgSpec, raw: unknown): ArgReading {
   if (Object.keys(argumentsRead).length) notes.argumentsRead = argumentsRead;
   if (Object.keys(valuesRead).length) notes.valuesRead = valuesRead;
   if (ignored.length) notes.ignoredArguments = ignored;
-  if (Object.keys(didYouMean).length) notes.didYouMean = didYouMean;
+  if (Object.keys(didYouMean).length) notes.argumentDidYouMean = didYouMean;
   if (pageNote) notes.pageNote = pageNote;
   const outcome: ArgOutcome = unknown.length || pointed.length
     ? "would_refuse"

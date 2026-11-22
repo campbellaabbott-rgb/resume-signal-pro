@@ -141,6 +141,12 @@ export type CountryReading =
  * hand spelling, exact after folding, BEFORE the code rules (so "UAE" is AE
  * and "UK" is GB); two letters that are a code the board accepts; three
  * letters that are an alpha-3 code. Never a substring match.
+ *
+ * A CODE IS ONLY EVER TYPED AS ONE. The code rules read the entry as sent
+ * (trimmed), never its folded form: folding drops dots and turns a slash into
+ * a space, so "N/A", "n.a." and "N.A." folded to "na" and were searched as
+ * Namibia (review 2026-11-22). Two or three letters and nothing else is a
+ * code; anything punctuated that no name holds is unread.
  */
 export function readCountry(entry: unknown): CountryReading {
   const raw = String(entry ?? "").trim();
@@ -152,9 +158,8 @@ export function readCountry(entry: unknown): CountryReading {
   if (REGIONS.has(k)) return { region: true };
   const named = NAMES.get(k);
   if (named) return { code: named };
-  const up = k.replace(/ /g, "").toUpperCase();
-  if (/^[A-Z]{2}$/.test(up)) return CODE_SET.has(up) ? { code: up } : { unread: true };
-  if (/^[A-Z]{3}$/.test(up) && A3.has(up)) return { code: A3.get(up)! };
+  if (/^[A-Za-z]{2}$/.test(raw)) return CODE_SET.has(raw.toUpperCase()) ? { code: raw.toUpperCase() } : { unread: true };
+  if (/^[A-Za-z]{3}$/.test(raw) && A3.has(raw.toUpperCase())) return { code: A3.get(raw.toUpperCase())! };
   return { unread: true };
 }
 

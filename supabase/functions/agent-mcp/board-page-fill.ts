@@ -11,13 +11,22 @@
 // answered as counts by reason, never the dropped rows) and a clock. It never
 // reads anything itself.
 //
-// WHEN IT REFILLS: ON ROWS ACTUALLY DROPPED. After a read, when the page holds
-// fewer than `limit` rows AND that read dropped at least one row AND it said
-// hasMore with a numeric nextOffset above the offset it was asked for AND
-// fewer than two refill reads were made AND nextOffset is within the caller's
-// deepest offset AND under 3,000 ms have passed since the first read began, it
-// reads again with the same body at that nextOffset for exactly the rows still
-// missing. A read that dropped nothing ends the refill.
+// WHEN IT REFILLS: ON ROWS ACTUALLY DROPPED. The refill starts only when the
+// first read dropped at least one row (a page with nothing dropped is the
+// board's own answer and makes one board call). Then, while the page holds
+// fewer than `limit` rows AND the last read kept said hasMore with a numeric
+// nextOffset above the offset it was asked for AND fewer than two refill reads
+// were made AND nextOffset is within the caller's deepest offset AND under
+// 3,000 ms have passed since the first read began, it reads again with the
+// same body at that nextOffset for exactly the rows still missing. A refill
+// read that dropped nothing does NOT end the refill: the board can answer a
+// refill short of what it was asked (review 2026-11-22: asked for 4, it
+// answered 3 and hasMore), and stopping there left a page of 9 with rows
+// withheld, hasMore true, one refill read unused and no reason given.
+//
+// A SHORT PAGE THAT WITHHELD ROWS ALWAYS SAYS WHY. Once the refill has
+// started, the only ways out are a full page, hasMore false, or a stated
+// pageShortBecause.
 //
 // NEVER ASK FOR MORE AND CUT. The board reorders inside a page and its
 // nextOffset is not always offset + limit, so a page cut short of what was
@@ -196,14 +205,14 @@ export async function fillPage(input: FillInput): Promise<FillResult> {
     let dropped = firstGate.dropped;
     let answered = firstRows.length;
     let last = first;
-    let lastDropped = droppedTotal(firstGate.dropped);
+    // Refilled only when the first read dropped a row and the caller will serve this page.
+    const refilling = droppedTotal(firstGate.dropped) > 0 && !(input.proceed && !input.proceed(first));
     let askedOffset = input.offset;
     let refillReads = 0;
     let because: PageShortReason | undefined;
     let countP: Promise<CountOutcome> | null = null;
-    if (input.proceed && !input.proceed(first)) lastDropped = 0;
 
-    while (rows.length < input.limit && lastDropped > 0 && last.hasMore === true) {
+    while (refilling && rows.length < input.limit && last.hasMore === true) {
       const next = last.nextOffset;
       if (typeof next !== "number" || !Number.isFinite(next) || next <= askedOffset) { because = "no_next_offset"; break; }
       if (refillReads >= MAX_REFILL_READS) { because = "refill_limit"; break; }
@@ -226,13 +235,9 @@ export async function fillPage(input: FillInput): Promise<FillResult> {
       dropped = addDropped(dropped, g.dropped);
       answered += gotRows.length;
       last = got.r;
-      lastDropped = droppedTotal(g.dropped);
       askedOffset = next;
     }
     // The reason is published only for a page that is short while it says more exists.
-    if (rows.length < input.limit && last.hasMore === true && !because) {
-      if (refillReads >= MAX_REFILL_READS && lastDropped > 0) because = "refill_limit";
-    }
     const pageShortBecause = rows.length < input.limit && last.hasMore === true ? because : undefined;
 
     let count: CountOutcome = { state: "none" };

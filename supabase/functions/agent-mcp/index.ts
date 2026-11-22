@@ -383,7 +383,8 @@ const SUPPORTED_METHODS = ["initialize", "tools/list", "tools/call", "prompts/li
 // 2026-11-18.2 (lane SH, OD14-ASHBY shared half, 2026-11-18): apply_myself carries the shared form reader that answers an Ashby posting "withheld" before its cache or any request whatever vendor list is passed, with its Ashby reader deleted; the connector already left Ashby out of its own list in 2026-11-18.1, which round B's integration branch carries without the shared stop.
 // 2026-11-19.1 (OD16, lane api4/od16-federal, owner's yes of 2026-11-18): U.S. federal rows leave the withheld list; search, debug, fit, get_job, get_jobs, apply_myself and check_apply_support hand on a federal posting only once the agency's who-may-apply statement is stored (read beside the page, fenced), each card carrying a federal block (agency, who may apply, closing date, on our board since, official link, OPM's notice) and no postedAt, and each result federalAttribution with the date the board last read the feed; check_jobs_open checks federal ids. Needs job-board .104's migration 20261119110000 (who_may_apply) applied first.
 // 2026-11-21.1 (lane fix/1121-connector-errors, the owner's "people are getting errors when using the mcp and API - lets fix it"): a search page refills past withheld rows (at most two more reads, the shortfall only, 3 s to start and 6 s to answer) and its total leaves them out only when a count read proves the same search; a wrong argument name is read as the one meant and said back, and (owner D3) a name a search tool does not take is answered without, said on the answer's first line with a did-you-mean and counted would_refuse, never refused in this build, sponsorship and seniority names get fixed answers, string booleans and spec-3's value synonyms are read and said, a corrected call is counted corrected (migration 20261206130000 first), and an empty value is not sent; a country is read by name (USA, UK, Ireland) or refused naming both readings; a keyless limit above the cap says the page it got; both employer tools take an employer's name and resolve it in one board call, a name they cannot place being a row with candidates; key_status answers with no key; a revoked key on a keyless tool gets its answer, keyless; full-time, junior and on-site reach the board as its values and posted today is not every posting; ids in one comma string are checked one by one; a refused call is counted under its tool or under unknown; the card keeps the employer match label and the guide says total counts title, employer-name and department matches; every search answer carries feedFreshness; initialize answers 2025-11-25, 2025-06-18, 2025-03-26 and 2024-11-05 as asked, a 2025-03-26 batch is read, a 2026-07-28 request is told to fall back to initialize, and an SSE client is told the transport.
-const FN_BUILD = "agent-mcp.2026-11-21.1";
+// 2026-11-21.2 (lane fix/1121-connector-errors, the review of 2026-11-22): a misspelt argument name's suggestion is argumentDidYouMean, declared in search_jobs' outputSchema, and a reader's note never overwrites a key the answer already carries, so the board's own didYouMean (a string) survives and a client that checks structuredContent against the schema accepts the answer; a page that withheld rows keeps refilling while it is short, says more and has a refill read left (a refill the board answered short no longer ends it), so a short page that withheld rows always names pageShortBecause; a country typed with punctuation (N/A, n.a.) is unread, never the code its letters spell.
+const FN_BUILD = "agent-mcp.2026-11-21.2";
 /** Where a free key is minted — the page every refusal in this file points at. */
 const MINT_URL = "https://resumebooster.work/data-api";
 /** Where a pass is bought, signed in — the fix every pass refusal names. */
@@ -1269,6 +1270,8 @@ const DISCLOSURE_SCHEMA = {
   excludedTerms: { type: "array", items: { type: "string" } },
   intentFilters: { type: "array", items: { type: "string" }, description: "Words read out of the query as filters." },
   didYouMean: { type: "string" },
+  // Its values are names the tool takes (strings); the listing serves the type alone (25,000-byte budget).
+  argumentDidYouMean: { type: "object", description: "Each argument name sent that this tool does not take, and the name it likely meant: resend the value under that name." },
   salaryStatedOnly: { type: "boolean", description: "Row-selecting: postings with no annualised USD figure are excluded from this page." },
   agenciesExcluded: { type: "boolean", description: "Row-selecting: agency postings are hidden from this page." },
   withheld: { type: "integer", description: "Rows on this page not handed on; total counts them only when totalIncludesWithheld is true." },
@@ -2343,7 +2346,7 @@ function guideText(edition: Edition, keyed: boolean): string {
     `- \`total\` counts postings whose title, employer name or department matched the words; \`relatedTotal\` counts those matched only in their description. A row's \`matchScope\` says where it matched (\`title\`, \`employer\` or \`description\`; many rows carry none), and \`titleTotal\` and \`employerTotal\` split \`total\` when the board gives them. \`matchNote\` means every row on the page says it matched somewhere other than its title. Say which you mean.`,
     `- \`withheldTotal\` is how many of the board's matches this server may not hand on, already taken out of \`total\`; \`totalIncludesWithheld\` means \`total\` still counts them. \`refillReads\` counts the extra board reads that topped a page up after rows were withheld, and \`pageShortBecause\` says why a page holds fewer rows than its limit; page on with \`nextOffset\` as given.`,
     `- \`feedFreshness\` is how recently the employer feeds behind live postings were re-read (half within \`p50Minutes\`, 95% within \`p95Minutes\`, measured at \`asOf\`): our re-check cadence, never a posting's age.`,
-    `- \`notApplied\` opens an answer that was sent a name the tool does not take (or a filter it cannot apply): that name was not applied, so tell the person what the results do not reflect, and resend it under the name \`didYouMean\` offers when there is one. \`argumentsRead\` says which argument was read as which (a \`keyword\` as \`query\`), and \`ignoredArguments\` names any not used. \`countryRead\` and \`valuesRead\` say how a country name or a value was read (USA as US, full-time as full_time, remote "yes" as true, sort "date" as newest), and \`countryNote\` adds what a name stood for. \`limitAsked\`, \`limitApplied\` and \`limitNote\` mean the page was cut to its cap: ask for the next one with \`nextOffset\`.`,
+    `- \`notApplied\` opens an answer that was sent a name the tool does not take (or a filter it cannot apply): that name was not applied, so tell the person what the results do not reflect, and resend it under the name \`argumentDidYouMean\` offers for it when there is one (\`didYouMean\` is the board's own spelling suggestion for the search words). \`argumentsRead\` says which argument was read as which (a \`keyword\` as \`query\`), and \`ignoredArguments\` names any not used. \`countryRead\` and \`valuesRead\` say how a country name or a value was read (USA as US, full-time as full_time, remote "yes" as true, sort "date" as newest), and \`countryNote\` adds what a name stood for. \`limitAsked\`, \`limitApplied\` and \`limitNote\` mean the page was cut to its cap: ask for the next one with \`nextOffset\`.`,
     `- \`postedAt\` is the date the employer's own hiring system gives for the posting, not when this board first saw it; it is absent when the feed states none, which does not make a posting old.`,
     `- \`locationInterpreted\` says what was read out of the query into a filter (a place, remote, a date window, an employer) and \`from\` the words as typed; \`sponsorshipNote\` means this board cannot filter by visa sponsorship, so never say a posting sponsors unless its own text does. \`notSearched\` means the search named nothing the board can look for (only sponsorship words): ask the person for a role or a place.`,
     `- \`federal\` on a card marks a U.S. federal announcement from USAJOBS: the agency is the employer, \`whoMayApply\` is the agency's own statement of who may apply (some are only for current federal staff, veterans or another group: say so before suggesting it), it is open until the agency's closing date (\`closesAt\`), and it has no \`postedAt\` because USAJOBS moves that date when it reposts an announcement; \`onBoardSince\` is when it reached this board, never its age. Apply only through the announcement's own instructions at \`officialUrl\`, and pass on \`notice\`: this is not an official copy.`,
@@ -5445,6 +5448,14 @@ function retryAfterOf(reason: unknown): Record<string, string> {
  * ahead of the JSON; `search` answers in the fixed one-text-item shape
  * ChatGPT's research connectors parse as JSON, so there they are the JSON's
  * first key instead. Either way notApplied leads structuredContent.
+ *
+ * A NOTE NEVER OVERWRITES THE ANSWER'S OWN KEY. The answer's keys are the
+ * ones its outputSchema declares, with their types: the reader's argument
+ * suggestion once landed on search_jobs' didYouMean (the board's spelling of
+ * the search words, a string) as an object, so a client that checks
+ * structuredContent against the schema refused the whole answer, and the
+ * board's suggestion was lost. The reader's keys are its own
+ * (argumentDidYouMean); valuesRead alone is merged, on purpose.
  */
 function withArgNotes(rpc: unknown, notes: Record<string, unknown>, toolName: string): unknown {
   if (!Object.keys(notes).length) return rpc;
@@ -5455,10 +5466,11 @@ function withArgNotes(rpc: unknown, notes: Record<string, unknown>, toolName: st
   const lines = Array.isArray(notApplied) ? notApplied.map(String) : [];
   const own = sc.valuesRead && typeof sc.valuesRead === "object" ? sc.valuesRead as Record<string, unknown> : {};
   const read = { ...own, ...(valuesRead && typeof valuesRead === "object" ? valuesRead as Record<string, unknown> : {}) };
+  const added = Object.fromEntries(Object.entries(rest).filter(([k]) => !Object.prototype.hasOwnProperty.call(sc, k)));
   const rebuilt = toolOk({
     ...(lines.length ? { notApplied: lines } : {}),
     ...sc,
-    ...rest,
+    ...added,
     ...(Object.keys(read).length ? { valuesRead: read } : {}),
   });
   if (lines.length && toolName !== "search") rebuilt.content.unshift({ type: "text", text: lines.join("\n") });

@@ -15,6 +15,9 @@
  * network faked.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
+// The validator the MCP TypeScript SDK's client checks structuredContent with
+// (ajv; here eslint's copy, draft-07, which reads these schemas as written).
+import Ajv from "ajv";
 import { bootKeylessMcp, type KeylessMcp } from "./helpers/keyless-mcp";
 
 vi.setConfig({ testTimeout: 30_000, hookTimeout: 120_000 });
@@ -120,7 +123,7 @@ describe("UNKNOWN NAMES (D3): never applied, NOT refused, said on the first line
     expect(r.body.ignoredArguments).toEqual(["colour"]);
     expect(r.body.notApplied).toEqual([r.first]);
     expect(r.structured?.notApplied).toEqual([r.first]);
-    expect(r.body).not.toHaveProperty("didYouMean");
+    expect(r.body).not.toHaveProperty("argumentDidYouMean");
     expect(metered()).toBe(2);
     expect(await outcomes()).toEqual(["ok", "would_refuse"]);
   });
@@ -129,12 +132,29 @@ describe("UNKNOWN NAMES (D3): never applied, NOT refused, said on the first line
     expect(r.isError).toBe(false);
     expect(pageReads()[0]).not.toHaveProperty("location");
     expect(r.first).toMatch(/^search_jobs does not take "locaton", so it was not applied\. It takes: .*\. Did you mean location\?$/);
-    expect(r.body.didYouMean).toEqual({ locaton: "location" });
+    expect(r.body.argumentDidYouMean).toEqual({ locaton: "location" });
+    expect(r.body).not.toHaveProperty("didYouMean");
+  });
+  it("a misspelt argument name keeps the board's own spelling suggestion, and the answer still fits search_jobs' outputSchema", async () => {
+    // Review 2026-11-22: {query: "recruter", locaton: "Dublin"} answered
+    // didYouMean {locaton: "location"}, an object where the schema declares a
+    // string, so a client that checks structuredContent refused the answer;
+    // and the board's "recruiter" was gone.
+    m.board = () => new Response(JSON.stringify({ jobs: [ROW], total: 1, hasMore: false, didYouMean: "recruiter" }), { status: 200 });
+    const r = await search({ query: "recruter", locaton: "Dublin" });
+    expect(r.isError).toBe(false);
+    expect(r.structured?.didYouMean).toBe("recruiter");
+    expect(r.structured?.argumentDidYouMean).toEqual({ locaton: "location" });
+    expect(r.body.didYouMean).toBe("recruiter");
+    const listed = await m.rpc("tools/list", {});
+    const tool = ((listed.result as { tools: Array<{ name: string; outputSchema: Record<string, unknown> }> }).tools).find((t) => t.name === "search_jobs")!;
+    const validate = new Ajv({ allErrors: true }).compile(tool.outputSchema);
+    expect(validate(r.structured), JSON.stringify(validate.errors)).toBe(true);
   });
   it("a did-you-mean is never offered toward a fixed-answer name the tool does not take", async () => {
     const r = await search({ query: "nurse", levle: "senior" });
     expect(r.first).toMatch(/does not take "levle", so it was not applied/);
-    expect(r.body).not.toHaveProperty("didYouMean");
+    expect(r.body).not.toHaveProperty("argumentDidYouMean");
   });
   it("two unknown names are said in one line", async () => {
     const r = await search({ query: "nurse", colour: "red", shoe: 9 });

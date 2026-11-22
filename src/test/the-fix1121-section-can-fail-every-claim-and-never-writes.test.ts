@@ -152,8 +152,10 @@ const itRow = (i: number) => ({ id: `lever:beta:it-${i}`, title: "Project Manage
 const usRow = (i: number) => ({ id: `workday:homedepot~wd5~careerdepot:Req${198700 + i}`, title: "Field Sales Consultant", company: "Home Depot", country: "US" });
 const GUIDE_GOOD = [
   "- `total` counts postings whose title, employer name or department matched the words; `relatedTotal` counts those matched only in their description.",
-  "- `notApplied` opens an answer that was sent a name the tool does not take (or a filter it cannot apply): that name was not applied, so tell the person what the results do not reflect, and resend it under the name `didYouMean` offers when there is one.",
+  "- `notApplied` opens an answer that was sent a name the tool does not take (or a filter it cannot apply): that name was not applied, so tell the person what the results do not reflect, and resend it under the name `argumentDidYouMean` offers for it when there is one (`didYouMean` is the board's own spelling suggestion for the search words).",
 ].join("\n");
+/** The lane's first build's line: a misspelt name's suggestion sent to the board's didYouMean key. */
+const GUIDE_FIRST_BUILD = "- `notApplied` opens an answer that was sent a name the tool does not take (or a filter it cannot apply): that name was not applied, so tell the person what the results do not reflect, and resend it under the name `didYouMean` offers when there is one.";
 const GUIDE_TODAY = "- `total` counts postings whose TITLE matched the words; `relatedTotal` counts those matched only in their description.";
 
 type Refusal = "page" | "atlantis" | "georgia" | "type" | "age";
@@ -182,8 +184,8 @@ const listAns = (names: string[]): Ans => ok({ jsonrpc: "2.0", id: 41, result: {
 const GOOD = (): World => {
   const negotiated = (v: string) => (["2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"].includes(v) ? v : "2025-11-25");
   return {
-    apiBuild: "public-api.2026-11-21.1",
-    mcpBuild: "agent-mcp.2026-11-21.1",
+    apiBuild: "public-api.2026-11-21.2",
+    mcpBuild: "agent-mcp.2026-11-21.2",
     signIn: "off",
     init: Object.fromEntries(REVISIONS.map((v) => [v, initAns(negotiated(v), "off")])),
     cors: "authorization, x-api-key, x-client-info, apikey, content-type, mcp-protocol-version, mcp-session-id, last-event-id, mcp-method, mcp-name",
@@ -337,7 +339,12 @@ const keyed = (calls: string[], who: string) => calls.filter((c) => new RegExp(`
 // ── before the deploy ────────────────────────────────────────────────────────
 
 describe("before the deploy: INFO only, and nothing but the two build preflights is sent", () => {
-  for (const [label, w] of [["today's live builds", TODAY()], ["the federal lane's builds", { ...TODAY(), apiBuild: "public-api.2026-11-19.1", mcpBuild: "agent-mcp.2026-11-19.1" }]] as const) {
+  for (const [label, w] of [
+    ["today's live builds", TODAY()],
+    ["the federal lane's builds", { ...TODAY(), apiBuild: "public-api.2026-11-19.1", mcpBuild: "agent-mcp.2026-11-19.1" }],
+    // 2026-11-21.1 lacks the review's fixes of 2026-11-22 (argumentDidYouMean, the refill, N/A, /v1/fit's country list).
+    ["the lane's first builds, before the review's fixes", { ...TODAY(), apiBuild: "public-api.2026-11-21.1", mcpBuild: "agent-mcp.2026-11-21.1" }],
+  ] as const) {
     it(`${label}: every line is INFO with every key and keyless calls asked for`, () => {
       const r = run(routes(w), { fresh: true, keyless: true });
       expect(verdicts(r.lines, "FAIL"), r.out).toEqual([]);
@@ -484,6 +491,7 @@ const BROKEN: Break[] = [
   ["CE11", "an open id called closed", (w) => { w.s11 = toolAns({ open: { [itRow(0).id]: true }, closed: [itRow(1).id], checked: 2 }); }],
   ["CE12", "the guide says total counts title matches only (today's guide)", (w) => { w.guide = ok({ jsonrpc: "2.0", id: 121, result: { contents: [{ uri: "resumebooster://guide", text: `${GUIDE_TODAY}\n${GUIDE_GOOD.split("\n")[1]}` }] } }); }],
   ["CE12", "the guide does not say notApplied opens an answer", (w) => { w.guide = ok({ jsonrpc: "2.0", id: 121, result: { contents: [{ uri: "resumebooster://guide", text: GUIDE_GOOD.split("\n")[0] }] } }); }],
+  ["CE12", "the guide sends a misspelt name to didYouMean, the board's spelling key (the lane's first build)", (w) => { w.guide = ok({ jsonrpc: "2.0", id: 121, result: { contents: [{ uri: "resumebooster://guide", text: `${GUIDE_GOOD.split("\n")[0]}\n${GUIDE_FIRST_BUILD}` }] } }); }],
 ];
 
 describe("after the deploy each broken claim fails, and only it", () => {
@@ -677,6 +685,6 @@ describe("the section's patterns are the code's own words", () => {
     const src = readFileSync(resolve(ROOT, "supabase/functions/agent-mcp/index.ts"), "utf8").replace(/\\`/g, "`");
     expect(src).toMatch(/`total` counts postings whose title, employer name or department matched/);
     expect(src).toMatch(/`notApplied` opens an answer/);
-    expect(src).toMatch(/`didYouMean`/);
+    expect(src).toMatch(/`argumentDidYouMean`/);
   });
 });

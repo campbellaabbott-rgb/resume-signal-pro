@@ -238,6 +238,44 @@ describe("the filler's bounds, with its clock faked", () => {
     expect(r.pageShortBecause).toBe("refill_limit");
   });
 
+  it("a refill read the board answers short with nothing dropped is followed by the second refill, and the page fills", async () => {
+    // Review 2026-11-22: 10 read, 4 SmartRecruiters dropped; the refill asked
+    // for 4 answered 3, dropped none and said hasMore. The fill stopped at 9
+    // rows, withheld 4, refillReads 1, with no reason, one read still unused.
+    const rows = pool([3, 5, 8, 9]);
+    const first = exactBoard(rows)(body);
+    const reads: Array<Record<string, unknown>> = [];
+    const read = async (b: Record<string, unknown>): Promise<BoardAnswer> => {
+      reads.push(b);
+      const offset = Number(b.offset);
+      const page = offset === 10 ? rows.slice(10, 13) : rows.slice(offset, offset + Number(b.limit));
+      return { jobs: page, total: 30, hasMore: true, nextOffset: offset + page.length };
+    };
+    const r = await fillPage({ read, gate, body, first, limit: 10, offset: 0, deepestOffset: 200 });
+    expect(reads.map((b) => [b.offset, b.limit])).toEqual([[10, 4], [13, 1]]);
+    expect(r.rows).toHaveLength(10);
+    expect(r.rows.some((j) => j.source === "smartrecruiters")).toBe(false);
+    expect(r.refillReads).toBe(2);
+    expect(r.pageShortBecause).toBeUndefined();
+    expect(r.last.nextOffset).toBe(14);
+  });
+
+  it("a page that withheld rows and is still short with more to come always names why, even when its last read dropped nothing", async () => {
+    const rows = pool([3, 5, 8, 9]);
+    const first = exactBoard(rows)(body);
+    // Each refill answers one row fewer than it was asked, none withheld, and pages on past the row it left out.
+    const read = async (b: Record<string, unknown>): Promise<BoardAnswer> => {
+      const offset = Number(b.offset);
+      const page = rows.slice(offset, offset + Math.max(0, Number(b.limit) - 1));
+      return { jobs: page, total: 30, hasMore: true, nextOffset: offset + Number(b.limit) };
+    };
+    const r = await fillPage({ read, gate, body, first, limit: 10, offset: 0, deepestOffset: 200 });
+    expect(r.rows).toHaveLength(9);
+    expect(r.last.hasMore).toBe(true);
+    expect(r.refillReads).toBe(2);
+    expect(r.pageShortBecause).toBe("refill_limit");
+  });
+
   it("a count read that arrives after the refill phase plus 250 ms is not used", async () => {
     vi.useFakeTimers();
     const rows = pool([3, 5, 8, 9]);
