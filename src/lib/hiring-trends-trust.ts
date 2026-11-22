@@ -146,7 +146,8 @@ export function closureVerdict(
 /** The sentence a held week prints in place of its number. */
 export function heldClosureSentence(
   v: Extract<ClosureVerdict, { state: "held" }>,
-  fmt: (n: number) => string = (n) => n.toLocaleString(),
+  // en-US, as /hiring-trends prints every other figure (S14X-255).
+  fmt: (n: number) => string = (n) => n.toLocaleString("en-US"),
 ): string {
   if (v.reason === "flagged_majority") {
     return `Withheld — our collector flagged ${fmt(v.flagged ?? 0)} of the week's takedown records as possible read failures of its own, more than the ${fmt(v.closed ?? 0)} it could vouch for, so a figure here would describe our crawler rather than employers.`;

@@ -799,7 +799,7 @@
   },
   "scanProgress": {
     "title": "Análisis IA en Progreso",
-    "subtitle": "Usando Gemini Pro para máxima precisión",
+    "subtitle": "Leyendo tu currículum, paso a paso",
     "complete": "{{percent}}% completado",
     "live": "En vivo",
     "securityNote": "Tu currículum se borra en un máximo de 7 días y nunca se vende",
@@ -3223,11 +3223,11 @@
     "crafting": "Generando comentarios personalizados..."
   },
   "aiGenerationProgress": {
-    "title": "GPT-5 está trabajando",
+    "title": "La IA está trabajando",
     "generating": "Generando {{productName}}",
     "steps": {
       "analyzingTitle": "Analizando currículum",
-      "analyzingDesc": "GPT-5 está leyendo tu experiencia y habilidades",
+      "analyzingDesc": "Leyendo tu experiencia y habilidades",
       "optimizingTitle": "Optimizando para ATS",
       "optimizingDesc": "Agregando palabras clave y mejorando el formato",
       "generatingTitle": "Generando contenido",
@@ -3236,7 +3236,7 @@
       "finalizingDesc": "Controles de calidad y formato"
     },
     "complete": "{{progress}}% completado",
-    "quality": "Usando GPT-5 para máxima calidad",
+    "quality": "Escrito con IA",
     "secure": "Tus datos se procesan de forma segura"
   },
   "atsDefenseResults": {
@@ -3543,7 +3543,7 @@
     "copied": "Copiado",
     "error": "Error de generación",
     "waiting": "Esperando contenido...",
-    "gpt5Writing": "GPT-5 está escribiendo..."
+    "gpt5Writing": "La IA está escribiendo..."
   },
   "notFound": {
     "code": "404",
@@ -5783,7 +5783,7 @@
     "startNewPurchase": "¿Compras para otro puesto? Empieza una compra nueva.",
     "boughtHereTitle": "3. Tu sección de experiencia: ya comprada en este dispositivo",
     "openYourLink": "Para verla o generarla, abre el enlace de tu correo de compra. No se te cobrará de nuevo.",
-    "noLongerSoldBody": "Freelance Boost y Transition Pro ya no se venden y no forman parte de Pro. Si compraste alguno, abre el enlace de tu correo de compra: sigue funcionando durante 90 días. Ahora una cuenta gratuita redacta cada día un currículum adaptado, una carta de presentación y una preparación de entrevista para un empleo.",
+    "noLongerSoldBody": "Freelance Boost y Transition Pro ya no se venden y no forman parte de Pro. Si compraste alguno, abre el enlace de tu correo de compra: sigue funcionando. Ahora una cuenta gratuita redacta cada día un currículum adaptado, una carta de presentación y una preparación de entrevista para un empleo.",
     "noLongerSoldMeta": "Freelance Boost y Transition Pro ya no se venden. Si compraste alguno, el enlace de tu correo de compra sigue funcionando.",
     "noLongerSoldTitle": "Freelance Boost ya no se vende",
     "regenerate": "Regenerar",
@@ -5993,7 +5993,7 @@
     "autoRenewTitle": "Marca la casilla de renovación",
     "fairUseTitle": "Has alcanzado el límite de uso razonable de Pro",
     "planUnpaidTitle": "Tu plan aún no está pagado",
-    "retiredBody": "Este producto ya no se vende y no se cobró nada. Si lo compraste antes, tu enlace sigue funcionando durante 90 días.",
+    "retiredBody": "Este producto ya no se vende y no se cobró nada. Si lo compraste antes, tu enlace sigue funcionando.",
     "retiredTitle": "Ya no se vende"
   },
   "consent": {

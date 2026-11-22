@@ -31,6 +31,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { datedHeadcount } from "@/lib/headcount";
 import { inflight } from "@/lib/company/inflight";
+import { count as fmtCount } from "@/lib/format";
 
 export interface CompanyIntel {
   employees: number | null;
@@ -127,7 +128,7 @@ export function CompanyIntelPanel({ companyToken }: { companyToken: string }) {
     items.push({
       icon: Users,
       text: `${t("jobsPage.intel.employees", "≈{{n}} employees ({{basis}}) · {{band}}", {
-        n: head.n.toLocaleString(),
+        n: fmtCount(head.n),
         basis: intel.employee_basis === "yc_self_reported"
           ? t("jobsPage.intel.basisYc", "YC profile")
           : t("jobsPage.intel.basisPr", "public records"),
@@ -139,7 +140,7 @@ export function CompanyIntelPanel({ companyToken }: { companyToken: string }) {
     items.push({
       icon: BadgeDollarSign,
       text: t("jobsPage.intel.salary", "median stated salary floor ${{m}} ({{n}} USD postings)", {
-        m: Math.round(intel.median_usd_floor).toLocaleString(), n: (intel.usd_n ?? 0).toLocaleString(),
+        m: fmtCount(intel.median_usd_floor), n: fmtCount(intel.usd_n ?? 0),
       }),
     });
   }

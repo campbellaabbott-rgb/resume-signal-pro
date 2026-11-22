@@ -9,7 +9,41 @@ import { keyMatches } from "../_shared/admin-key.ts";
 // whatever key was entered. The header is allowed now, and the key is
 // compared in constant time.
 // 2026-11-09.1 (cost wave, lane ci-edge, cost audit 2026-11-08 Do first #10): the CORS answer says Access-Control-Max-Age 7200, so a browser asks the preflight once per two hours instead of before every call.
-const FN_BUILD = "get-error-telemetry.2026-11-09.1";
+// 2026-11-13.1 (bug round of 2026-11-08, part B, ops-alerts-b lane, S14X-157): head counts over the whole range (total, last hour, previous hour, server errors) and a truncated flag ride beside the newest rows the answer carries.
+const FN_BUILD = "get-error-telemetry.2026-11-13.1";
+
+/** The most rows one answer carries. The page shows them as a sample of the range. */
+const SAMPLE_CAP = 1000;
+
+/** Counts the page prints as the range's totals: exact, over every row, not the sample's. */
+type RangeCounts = { total: number; lastHour: number; previousHour: number; serverErrors: number };
+
+/**
+ * THE RANGE'S OWN COUNTS (S14X-157). The answer used to be the newest 1,000
+ * rows and nothing else, and /errors printed their length as the range's
+ * "Total Errors": a week holding 2,500 errors read as 1,000, and the 5xx and
+ * last-hour cards counted only the sample. These are head counts (no rows
+ * travel) on created_at, which is indexed. A count the database refuses gives
+ * null, and the page falls back to the sample and says so.
+ */
+// deno-lint-ignore no-explicit-any
+async function countRange(supabase: any, sinceIso: string, now: number): Promise<RangeCounts | null> {
+  const hourAgo = new Date(now - 3_600_000).toISOString();
+  const twoHoursAgo = new Date(now - 7_200_000).toISOString();
+  const head = () => supabase.from('error_telemetry').select('id', { count: 'exact', head: true });
+  const answers = await Promise.all([
+    head().gte('created_at', sinceIso),
+    head().gte('created_at', hourAgo),
+    head().gte('created_at', twoHoursAgo).lt('created_at', hourAgo),
+    head().gte('created_at', sinceIso).gte('http_status', 500),
+  ]);
+  if (answers.some((a: { error?: unknown; count?: unknown }) => a.error || typeof a.count !== 'number')) {
+    console.warn('[GET-ERROR-TELEMETRY] A range count did not answer; the page falls back to the sample.');
+    return null;
+  }
+  const [total, lastHour, previousHour, serverErrors] = answers.map((a: { count: number }) => a.count);
+  return { total, lastHour, previousHour, serverErrors };
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -53,12 +87,16 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    const { data, error } = await supabase
-      .from('error_telemetry')
-      .select('*')
-      .gte('created_at', sinceIso)
-      .order('created_at', { ascending: false })
-      .limit(Math.min(limit || 1000, 1000));
+    const cap = Math.min(Math.max(1, Math.floor(Number(limit) || SAMPLE_CAP)), SAMPLE_CAP);
+    const [{ data, error }, counts] = await Promise.all([
+      supabase
+        .from('error_telemetry')
+        .select('*')
+        .gte('created_at', sinceIso)
+        .order('created_at', { ascending: false })
+        .limit(cap),
+      countRange(supabase, sinceIso, Date.now()),
+    ]);
 
     if (error) {
       console.error('[GET-ERROR-TELEMETRY] Query error:', error.message);
@@ -68,8 +106,12 @@ serve(async (req) => {
       );
     }
 
+    // truncated: the range holds more rows than this answer carries. With no
+    // count to compare, a full sample may hold more, and says so.
+    const rows = data ?? [];
+    const truncated = counts ? counts.total > rows.length : rows.length >= cap;
     return new Response(
-      JSON.stringify({ data }),
+      JSON.stringify({ data: rows, counts, truncated }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

@@ -233,6 +233,7 @@ export type Database = {
       affiliate_conversions: {
         Row: {
           affiliate_id: string
+          approved_at: string | null
           commission_amount: number
           created_at: string
           currency: string | null
@@ -246,6 +247,7 @@ export type Database = {
         }
         Insert: {
           affiliate_id: string
+          approved_at?: string | null
           commission_amount: number
           created_at?: string
           currency?: string | null
@@ -259,6 +261,7 @@ export type Database = {
         }
         Update: {
           affiliate_id?: string
+          approved_at?: string | null
           commission_amount?: number
           created_at?: string
           currency?: string | null
@@ -2838,6 +2841,7 @@ export type Database = {
           p75_days_open: number | null
           relists: number
           rolled_at: string
+          suspect_n: number
         }
         Insert: {
           backfill_n?: number | null
@@ -2853,6 +2857,7 @@ export type Database = {
           p75_days_open?: number | null
           relists?: number
           rolled_at?: string
+          suspect_n?: number
         }
         Update: {
           backfill_n?: number | null
@@ -2868,6 +2873,7 @@ export type Database = {
           p75_days_open?: number | null
           relists?: number
           rolled_at?: string
+          suspect_n?: number
         }
         Relationships: []
       }
@@ -5899,6 +5905,10 @@ export type Database = {
         Returns: boolean
       }
       affiliate_address_key: { Args: { p_email: string }; Returns: string }
+      affiliate_approve_held_commissions: {
+        Args: { p_hold_days?: number }
+        Returns: number
+      }
       affiliate_clicks_roll_up_and_prune: {
         Args: { p_keep_days?: number }
         Returns: number
@@ -7830,6 +7840,10 @@ export type Database = {
         }[]
       }
       layoff_norm: { Args: { p_raw: string }; Returns: string }
+      layoff_site_text: {
+        Args: { p_city: string; p_site: string }
+        Returns: string
+      }
       layoff_warn_retire_unseen: {
         Args: {
           p_feed: string

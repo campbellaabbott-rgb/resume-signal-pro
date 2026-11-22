@@ -26,7 +26,69 @@ export interface AnalyticsEvent {
 
 type Counts = { views: number; conversions: number };
 
-export function createRollup(pageFilter?: string | null) {
+/**
+ * A MILESTONE'S PLACE ON ITS OWN SCALE (S14X-189): 30s = 30, 1m = 60,
+ * 2h = 7200, 25% = 25. NaN when the variant is not a milestone.
+ *
+ * The milestones were sorted by their digits alone, so 30s (30) came after
+ * 10m (10): the Time on Page funnel read 0s, 1m, 2m, 5m, 10m, 30s and each
+ * drop-off was measured between the wrong steps.
+ */
+export function milestoneValue(variant: string): number {
+  const m = /^(\d+(?:\.\d+)?)\s*(s|m|h|%)?$/i.exec(String(variant).trim());
+  if (!m) return NaN;
+  const n = Number(m[1]);
+  const unit = (m[2] ?? "").toLowerCase();
+  return unit === "m" ? n * 60 : unit === "h" ? n * 3600 : n;
+}
+
+/** Milestones in the order a visitor reaches them; anything else after them, by name. */
+export function orderMilestones<T extends { variant: string }>(rows: readonly T[]): T[] {
+  return [...rows].sort((a, b) => {
+    const x = milestoneValue(a.variant), y = milestoneValue(b.variant);
+    const xn = Number.isNaN(x), yn = Number.isNaN(y);
+    if (xn || yn) return xn && yn ? a.variant.localeCompare(b.variant) : xn ? 1 : -1;
+    return x - y || a.variant.localeCompare(b.variant);
+  });
+}
+
+/**
+ * THE OWNER'S CALENDAR DAY OF AN EVENT (S14X-190). A day was the UTC date of
+ * created_at while the page asked for local-midnight bounds, so "Today" could
+ * draw two days and an American evening visit counted as coming back on
+ * another day. The page sends its IANA zone; a missing or unknown zone keeps
+ * UTC. The zone's formatter runs once per distinct minute (every zone's
+ * offset is a whole number of minutes), not once per event.
+ */
+export function dayKeyer(timeZone?: string | null): { zone: string; dayOf: (createdAt: string) => string } {
+  const utc = { zone: "UTC", dayOf: (c: string) => String(c).slice(0, 10) };
+  if (typeof timeZone !== "string" || !timeZone || timeZone.length > 64 || /^(Etc\/)?(UTC|GMT|Z|Zulu|UCT|Universal)$/i.test(timeZone)) return utc;
+  let fmt: Intl.DateTimeFormat;
+  try {
+    fmt = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" });
+  } catch {
+    return utc;
+  }
+  const byMinute = new Map<number, string>();
+  return {
+    zone: fmt.resolvedOptions().timeZone,
+    dayOf: (c: string) => {
+      const t = Date.parse(String(c));
+      if (!Number.isFinite(t)) return utc.dayOf(c);
+      const minute = Math.floor(t / 60_000);
+      const hit = byMinute.get(minute);
+      if (hit) return hit;
+      const parts = fmt.formatToParts(new Date(t));
+      const part = (k: string) => parts.find((p) => p.type === k)?.value ?? "";
+      const day = `${part("year")}-${part("month")}-${part("day")}`;
+      byMinute.set(minute, day);
+      return day;
+    },
+  };
+}
+
+export function createRollup(pageFilter?: string | null, timeZone?: string | null) {
+  const days = dayKeyer(timeZone);
   const allVisitors = new Set<string>();
   const visitorsByDay = new Map<string, Set<string>>();
   const eventsByDay = new Map<string, number>();
@@ -40,7 +102,7 @@ export function createRollup(pageFilter?: string | null) {
     totalEvents++;
     // AUDIENCE: people, not events.
     const vid = raw.visitor_id ?? undefined;
-    const day = String(raw.created_at).slice(0, 10);
+    const day = days.dayOf(raw.created_at);
     eventsByDay.set(day, (eventsByDay.get(day) ?? 0) + 1);
     if (vid) {
       allVisitors.add(vid);
@@ -110,6 +172,8 @@ export function createRollup(pageFilter?: string | null) {
       // whose first visit fell in the unread part counts as new on a later
       // day, and returning is undercounted.
       visitorSplitApproximate: truncated,
+      // The zone whose calendar days these are (S14X-190): the page's, or UTC.
+      dayZone: days.zone,
     };
   };
 

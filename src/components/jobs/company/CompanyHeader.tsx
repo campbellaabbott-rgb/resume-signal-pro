@@ -28,7 +28,23 @@
 // the H1 says 'Roles on the "Corporate" board (UKG)'.
 //
 // THE EMPLOYER CHIP APPEARS ONCE, HERE (CP26), and only when the gated
-// verdict allows it; cards on a company page carry no employer badge.
+// verdict allows it; cards on a company page carry no employer badge. On a
+// page that counts several of the employer's boards, the chip's title names
+// the one board its hiring record reads (S14X-161): the record is read for
+// this board alone, while the line under the answer counts all of them.
+//
+// A SYSTEM ADDRESS IS NEVER A HEADING (RC-OI-42). A board with no name from
+// data, once the list has answered, used to be headed by its token: on a UKG
+// zero page that is "recruiting~ORB1000OENG~99afc845-...". A plain slug
+// ("10kbi") is still the heading's label; a token of several "~" parts is a
+// hiring system's address, so the heading names the system ("Roles on a UKG
+// board") or, with none known, "Roles on this board".
+//
+// WHOSE COUNTRIES (S14X-195). The intel reader pools every career site an
+// employer runs on one hiring system, so "Most roles in" printed the whole
+// tenant's countries as this page's. When the reader's counts exceed the
+// page's own figure (pooled-scope.ts), the fact says whose roles they are,
+// and on a page with no name to say it with, it is left out.
 import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Activity, BookmarkCheck, ChevronRight, MoreHorizontal } from "lucide-react";
@@ -47,6 +63,7 @@ import { ago as fmtAgo, count as fmtCount, date as fmtDate } from "@/lib/format"
 import { tPlural } from "@/lib/company/plural";
 import { SERVED_WINDOW_DAYS, type LanderModel, type OpenRolesValue } from "@/lib/company/lander-model";
 import { AgencyBanner } from "./AgencyBanner";
+import type { IntelScope } from "./pooled-scope";
 import { Chip } from "@/components/ui/chip";
 
 /** A measured work-mode split; "not stated" is counted, never folded into a mode. */
@@ -59,6 +76,32 @@ export function openRolesBasis(t: TFunction, v: Pick<OpenRolesValue, "asOf" | "b
   return v.basis === "counted"
     ? t("companyProfile.countedAgo", "counted {{ago}}", { ago: when })
     : t("companyProfile.readAgo", "read {{ago}}", { ago: when });
+}
+
+/**
+ * True when the token is a hiring system's address rather than a word a
+ * reader could know the board by: its parts joined by "~" (a Workday tenant
+ * and site, a UKG client code and job-board id, an Oracle host and site). A
+ * plain slug such as "10kbi" is the board's own address and stays a label.
+ */
+export function tokenIsSystemCode(token: string): boolean {
+  return String(token ?? "").includes("~");
+}
+
+/**
+ * The heading of a board with no name from data: its token in quotes when the
+ * token is a readable slug, else the hiring system ("Roles on a UKG board"),
+ * else "Roles on this board". Never a system address (RC-OI-42).
+ */
+export function unnamedBoardHeading(t: TFunction, token: string, system: string | null | undefined): string {
+  if (tokenIsSystemCode(token)) {
+    return system
+      ? t("companyProfile.h1SystemBoard", "Roles on a {{system}} board", { system })
+      : t("companyProfile.h1ThisBoard", "Roles on this board");
+  }
+  return system
+    ? t("companyProfile.h1GenericSystem", "Roles on the “{{label}}” board ({{system}})", { label: token, system })
+    : t("companyProfile.h1Generic", "Roles on the “{{label}}” board", { label: token });
 }
 
 /**
@@ -155,14 +198,17 @@ export function zeroAnswer(t: TFunction, model: Pick<LanderModel, "zeroReading" 
  * straight from this board's own hiring system", while the page listed none.
  * Now the title names no open roles ("{X} jobs", or the generic board's own
  * heading) and the description is the page's own line, which is true of every
- * zero page. `label` is what the generic heading names when the board has no
- * name (the page's existing rule).
+ * zero page. `label` is the board's token, which the generic heading names
+ * when the board has no name, unless it is a system address (RC-OI-42:
+ * unnamedBoardHeading).
  */
-export function zeroPageHead(t: TFunction, model: Pick<LanderModel, "name">, label: string): { title: string; description: string } {
+export function zeroPageHead(t: TFunction, model: Pick<LanderModel, "name">, label: string, system?: string | null): { title: string; description: string } {
   const { name, generic } = model.name;
   if (!name || generic) {
     return {
-      title: t("companyProfile.h1Generic", "Roles on the “{{label}}” board", { label: name ?? label }),
+      title: name
+        ? t("companyProfile.h1Generic", "Roles on the “{{label}}” board", { label: name })
+        : unnamedBoardHeading(t, label, system),
       description: t("companyProfile.zero.answer", "No roles are listed on this page right now."),
     };
   }
@@ -259,6 +305,12 @@ export interface CompanyHeaderProps {
   system: string | null;
   /** Up to three country codes with the most open roles (from the intel reader). */
   countries?: string[];
+  /**
+   * Whose roles the intel reader counted (pooled-scope.ts intelScope):
+   * "pooled" when its counts exceed this page's figure, so the countries are
+   * the employer's whole hiring system's. Absent or null: today's label.
+   */
+  countriesScope?: IntelScope;
   workMode?: WorkModeSplit | null;
   payStated?: { k: number; n: number; asOf: string | null } | null;
   /** When the work-mode split was counted; this board's own read when absent. */
@@ -276,7 +328,7 @@ export interface CompanyHeaderProps {
   onCopyLink?: () => void;
 }
 
-export function CompanyHeader({ model, token, system, countries = [], workMode, payStated, workModeAsOf, employerChipTip, boardReadAt, headcount, onWatch, onCopyLink }: CompanyHeaderProps) {
+export function CompanyHeader({ model, token, system, countries = [], countriesScope = null, workMode, payStated, workModeAsOf, employerChipTip, boardReadAt, headcount, onWatch, onCopyLink }: CompanyHeaderProps) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language || "en";
   const [claimOpen, setClaimOpen] = useState(false);
@@ -287,12 +339,9 @@ export function CompanyHeader({ model, token, system, countries = [], workMode, 
   // page has no rows to name it from): the heading names the board by its
   // address instead of pulsing a loading bar, and announcing "Loading the
   // employer's name", forever (2026-10-18 review, /jobs/company/10kbi).
+  // A token that is a system address is never the heading (RC-OI-42).
   const h1 = !name
-    ? (model.nameSettled
-        ? (system
-            ? t("companyProfile.h1GenericSystem", "Roles on the “{{label}}” board ({{system}})", { label: token, system })
-            : t("companyProfile.h1Generic", "Roles on the “{{label}}” board", { label: token }))
-        : <NameSkeleton />)
+    ? (model.nameSettled ? unnamedBoardHeading(t, token, system) : <NameSkeleton />)
     : generic
       ? (system
           ? t("companyProfile.h1GenericSystem", "Roles on the “{{label}}” board ({{system}})", { label: name, system })
@@ -312,11 +361,17 @@ export function CompanyHeader({ model, token, system, countries = [], workMode, 
     ? t("companyProfile.subtitleGeneric", "Live jobs straight from this board's own hiring system.")
     : t("companyProfile.subtitle", "Live jobs straight from {{companyPossessive}} own hiring system.", { company: name, companyPossessive: possessive(name) });
 
+  // The record behind the chip is this board's; on a page counting several
+  // of the employer's boards the title names which one (S14X-161).
+  const chipBoard = model.recordBoard && model.pooledBoards
+    ? t("companyProfile.employerChipOneBoard", "Hiring record for one of this employer's {{n}} boards: {{board}}", { n: fmtCount(model.pooledBoards, { lng: lang }), board: model.recordBoard })
+    : null;
+  const chipTitle = chipBoard ? (employerChipTip ? `${chipBoard}\n${employerChipTip}` : chipBoard) : employerChipTip;
   const status = model.variant === "agency"
     ? <AgencyBanner />
     : model.sections.employerChip
       ? (
-        <Chip variant="signal" icon={<Activity />} title={employerChipTip} data-employer-chip="">
+        <Chip variant="signal" icon={<Activity />} title={chipTitle} data-employer-chip="" data-employer-chip-board={model.recordBoard && model.pooledBoards ? model.recordBoard : undefined}>
           {t("jobsPage.hiringBadge2", "Actively hiring")}
         </Chip>
       )
@@ -334,7 +389,14 @@ export function CompanyHeader({ model, token, system, countries = [], workMode, 
   // Each fact appears only when the page already holds its data.
   const facts: Array<[key: string, label: string, value: string]> = [];
   if (system) facts.push(["system", t("companyProfile.facts.systemLabel", "Hiring system"), system]);
-  if (countryNames.length > 0) facts.push(["countries", t("companyProfile.facts.countriesLabel", "Most roles in"), listFormat(countryNames)]);
+  // Pooled counts are the employer's whole hiring system's (S14X-195): the
+  // label says so with the employer's name, and with no name to say it with
+  // the fact is left out rather than printed as this page's.
+  const ownName = !!name && !generic;
+  if (countryNames.length > 0 && countriesScope !== "pooled") facts.push(["countries", t("companyProfile.facts.countriesLabel", "Most roles in"), listFormat(countryNames)]);
+  else if (countryNames.length > 0 && ownName) {
+    facts.push(["countries", t("companyProfile.facts.countriesLabelPooled", "Most roles across the {{company}} hiring system in", { company: name }), listFormat(countryNames)]);
+  }
   const workModeRead = openRolesBasis(t, { asOf: workModeAsOf ?? boardReadAt, basis: workModeAsOf ? "counted" : "read" }, lang);
   if (workMode && workModeRead && workMode.remote + workMode.hybrid + workMode.onsite + workMode.unstated > 0) {
     facts.push(["workMode", t("companyProfile.facts.workModeLabel", "Work mode"), `${t("companyProfile.facts.workMode", "{{remote}} remote · {{hybrid}} hybrid · {{onsite}} on-site · {{unstated}} not stated", {
@@ -357,7 +419,7 @@ export function CompanyHeader({ model, token, system, countries = [], workMode, 
     facts.push(["pay", t("companyProfile.facts.payLabel", "Pay stated on"), `${t("companyProfile.facts.payValue", "{{k}} of {{n}}", { k: fmtCount(payStated.k, { lng: lang }), n: fmtCount(payStated.n, { lng: lang }) })} · ${t("companyProfile.pay.read", "read {{date}}", { date: payRead })}`]);
   }
 
-  const displayName = name ?? token;
+  const displayName = name ?? (tokenIsSystemCode(token) ? null : token);
   const watchLabel = !name
     ? t("companyProfile.actions.watchThis", "Watch this board")
     : generic
@@ -407,7 +469,9 @@ export function CompanyHeader({ model, token, system, countries = [], workMode, 
         )}
         <HeaderActions
           watchLabel={watchLabel}
-          menuLabel={t("companyProfile.actions.more", "More actions for {{name}}", { name: displayName })}
+          menuLabel={displayName
+            ? t("companyProfile.actions.more", "More actions for {{name}}", { name: displayName })
+            : t("companyProfile.actions.moreThis", "More actions for this board")}
           onWatch={onWatch}
           onClaim={model.sections.claim && name ? () => setClaimOpen(true) : undefined}
           onCopyLink={onCopyLink}

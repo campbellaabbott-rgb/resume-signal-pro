@@ -17,6 +17,7 @@ import type { CompanyIntel } from "@/components/jobs/CompanyIntelPanel";
 import type { OpenRolesValue } from "@/lib/company/lander-model";
 import { count as fmtCount, date as fmtDate } from "@/lib/format";
 import { ProfileSection, ValueBar } from "./parts";
+import { pooledBeyondPage } from "./pooled-scope";
 
 /** The plan's bar: at least this many fields, and a place stated on at least this share of open roles. */
 export const MIX_MIN_FIELDS = 2;
@@ -50,11 +51,12 @@ export function mixFacts(intel: CompanyIntel | null | undefined, openRoles: Open
   // so the counts are the employer's whole hiring system, not this page's.
   // They print under that label, and placement is judged against the pooled
   // total the lists prove (never against this page's figure, which the
-  // pooled sum always cleared).
-  const atLeast = Math.max(placed, inFields);
-  if (atLeast > page) {
-    if (placed < atLeast * MIX_MIN_PLACE_SHARE) return null;
-    return { fields, countries, asOf: readAt, pooled: { atLeast, page } };
+  // pooled sum always cleared). The header and the Pay card ask the same
+  // test (pooled-scope.ts, S14X-195).
+  const pooled = pooledBeyondPage([placed, inFields], page);
+  if (pooled) {
+    if (placed < pooled.atLeast * MIX_MIN_PLACE_SHARE) return null;
+    return { fields, countries, asOf: readAt, pooled };
   }
   if (placed < page * MIX_MIN_PLACE_SHARE) return null;
   return { fields, countries, asOf: readAt };

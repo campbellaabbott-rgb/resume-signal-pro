@@ -110,6 +110,8 @@ function shardChunk(json: string): string {
   return r.outputFiles[0].text;
 }
 const shardFile = (lng: string) => readFileSync(join(SHARD_DIR, `${lng}.json`), "utf8");
+/** How many strings the repo's English shard holds: the section counts the same file. */
+const EN_STRING_COUNT = (() => { const n = (o: Record<string, unknown>): number => Object.values(o).reduce<number>((a, v) => a + (typeof v === "string" ? 1 : n(v as Record<string, unknown>)), 0); return n(JSON.parse(shardFile("en")).ingestParsers); })();
 
 const NAMES = {
   entry: "index-6OaKujjA.js",
@@ -227,7 +229,8 @@ describe("the ingest-parsers section", () => {
       expect(pass, r.out).toContain(`PASS  B parse-pdf preflight x-fn-build = ${p} (2026-11-12.1 or later: the round's parser, carrying S14X-044 S14X-123 S14X-146 S14X-147 S14X-280 S14X-282 S14X-183)`);
       expect(pass, r.out).toContain(`PASS  B parse-docx preflight x-fn-build = ${d} (2026-11-12.1 or later: the round's parser, carrying S14X-124 S14X-125 S14X-126 S14X-281 RC-S13-037 RC-S13-036 S14X-147 S14X-280 S14X-183)`);
       expect(pass, r.out).toContain(`PASS  B parse-spreadsheet preflight x-fn-build = ${s} (2026-11-12.1 or later: the round's parser, carrying S14X-148 S14X-284 RC-S13-066)`);
-      expect(pass, r.out).toContain(`PASS  S1 S14X-183 the English ingest-parsers strings ride with the scanner (${NAMES.idx}, a chunk it imports, or the entry) and the entry names 8 more languages (de, en-GB, es, fr, hi, nl, pt, tl), each holding all 24 refusal and notice strings in the repo's own words`);
+      expect(pass, r.out).toContain(`PASS  S1 S14X-183 the English ingest-parsers strings ride with the scanner (${NAMES.idx}, a chunk it imports, or the entry) and the entry names 8 more languages (de, en-GB, es, fr, hi, nl, pt, tl), each holding all ${EN_STRING_COUNT} refusal and notice strings in the repo's own words`);
+      expect(EN_STRING_COUNT, "the English shard lost its refusal and notice strings").toBeGreaterThanOrEqual(24);
       expect(pass.filter((l) => l.startsWith(`PASS  R1 S14X-183 the scanner chunk ${NAMES.idx} maps every refusal code`)), r.out).toHaveLength(1);
       expect(pass, r.out).toContain("PASS  R2 S14X-044 S14X-282 the scanner chunk says an Arabic PDF may read out of order (rtl_unreliable) and how many pages had no text (image_pages_skipped)");
       expect(pass.filter((l) => l.startsWith(`PASS  T1 S14X-283 S14X-280 the résumé text reader ${NAMES.asb} decodes a .txt by its byte-order mark`)), r.out).toHaveLength(1);

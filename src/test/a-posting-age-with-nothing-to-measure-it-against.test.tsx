@@ -529,7 +529,7 @@ describe("a posting age with nothing to measure it against", () => {
     // over dead code because the spelling it pinned lived in prose, so the
     // property is pinned in CODE as well: the cohort is what reaches the copy.
     expect(JOBS, "the basis sentence must interpolate the cohort, not the survivors")
-      .toMatch(/n: employer!\.dated_n/);
+      .toMatch(/n: fmtCount\(employer!\.dated_n\)/);
     const offenders = JOBS.split("\n").filter((l) => l.includes("n_at_risk_14") && l.includes('t("jobsPage'));
     expect(offenders, `n_at_risk_14 reached copy: ${offenders.join(" | ")}`).toEqual([]);
   });

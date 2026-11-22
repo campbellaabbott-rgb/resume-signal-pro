@@ -8,10 +8,6 @@ import { checkInputLimits } from "../_shared/input-limits.ts";
 import { clipField, modelSpendGate } from "../_shared/model-spend-gate.ts";
 import { assertPaidSession } from "../_shared/paid-session.ts";
 import { isServiceRoleCaller } from "../_shared/service-caller.ts";
-import { clientAddressOr } from "../_shared/client-address.ts";
-import Stripe from "https://esm.sh/stripe@18.5.0";
-import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
-import { sessionWasRefunded } from "../_shared/payment-revocation.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -49,7 +45,16 @@ import { sessionWasRefunded } from "../_shared/payment-revocation.ts";
 // cost/ai and cost/ci-edge each stamped 2026-11-10.2 on code of its own, so the merged code
 // takes the next sequence (DEPLOY-LEDGER §3).
 // 2026-11-12.1 (bug round of 2026-11-08, part A, writing-tools lane, S14X-109, through the shared gateway reader): a gateway out of credits is a retryable 503, never a 402.
-const FN_BUILD = "generate-career-path.2026-11-12.1";
+// 2026-11-13.1 (bug round of 2026-11-08, part B, the owner's answer to S14X-143 of
+// 2026-11-18, pick B): the past-buyer path that asked Stripe about a session with
+// no claim is deleted, with its two buckets, its read of career_path_past_buyers
+// (the table stays: its migration is applied) and its day count. Its premise was
+// false: a claim is kept forever (nothing schedules a purge of
+// used_stripe_sessions), and verify-product-purchase writes one, with no age
+// limit, before the success page asks for a path. So the claim is the only
+// proof, a paid and unrefunded buyer is never refused for the purchase's age,
+// and no copy names a window (_shared/product-cuts.ts says the link keeps working).
+const FN_BUILD = "generate-career-path.2026-11-13.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -59,104 +64,10 @@ const corsHeaders = {
   "x-fn-build": FN_BUILD,
 };
 
-/** How long a past Career Path buyer's page keeps regenerating. */
-export const PAST_BUYER_DAYS = 90;
-
 const retired = (message: string) =>
   new Response(JSON.stringify({ error: message, code: "retired", retired: true }), {
     status: 410, headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
-
-/** A Checkout session id as Stripe mints them; anything else is never sent to Stripe. */
-export const STRIPE_SESSION_ID = /^cs_(live|test)_[A-Za-z0-9]{20,200}$/;
-
-/** Stripe reads this path may make: per address and for the whole function, each an hour. */
-export const PAST_BUYER_STRIPE_LIMITS = { perAddress: 10, globalPerHour: 200 };
-
-/** Sessions Stripe already said are not a past purchase, per isolate, for ten minutes. */
-const notPastBuyer = new Map<string, number>();
-const NOT_PAST_BUYER_MS = 10 * 60_000;
-
-type RateDb = Parameters<typeof sessionWasRefunded>[0] & {
-  rpc: (fn: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }>;
-};
-
-/** A past buyer Stripe already confirmed, inside their 90 days and not refunded or disputed since. Read before either bucket. */
-async function rememberedPastBuyer(db: RateDb, sessionId: string): Promise<boolean> {
-  try {
-    const { data, error } = await db.from("career_path_past_buyers").select("regenerate_until")
-      .eq("stripe_session_id", sessionId).gt("regenerate_until", new Date().toISOString()).maybeSingle();
-    if (error || !data) return false;
-    return !(await sessionWasRefunded(db, sessionId));
-  } catch {
-    return false;
-  }
-}
-
-/** Remember Stripe's yes until the buyer's 90 days end, and drop the rows whose days have ended. Best effort: unremembered, the next visit asks Stripe again. */
-async function rememberPastBuyer(db: RateDb, sessionId: string, until: number): Promise<void> {
-  try {
-    const now = new Date().toISOString();
-    await db.from("career_path_past_buyers").upsert({ stripe_session_id: sessionId, regenerate_until: new Date(until).toISOString(), confirmed_at: now }, { onConflict: "stripe_session_id" });
-    await db.from("career_path_past_buyers").delete().lt("regenerate_until", now);
-  } catch {
-    /* asked again next time */
-  }
-}
-
-/** Both buckets must answer yes; an unanswered bucket is a no (Stripe is never asked blind). */
-async function stripeReadAllowed(db: RateDb, req: Request): Promise<boolean> {
-  const take = async (ip: string, max: number) => {
-    try {
-      const { data, error } = await db.rpc("check_rate_limit", { p_function: "generate-career-path:stripe", p_ip: ip, p_max_requests: max, p_window_minutes: 60 });
-      return !error && data !== false;
-    } catch {
-      return false;
-    }
-  };
-  return await take(clientAddressOr(req.headers), PAST_BUYER_STRIPE_LIMITS.perAddress)
-    && await take("all", PAST_BUYER_STRIPE_LIMITS.globalPerHour);
-}
-
-/**
- * A past buyer whose claim row (kept 30 days) is gone: the Stripe session
- * itself, paid, for this product, inside PAST_BUYER_DAYS, and not refunded.
- * Counted before Stripe is asked, because every call spends the account's
- * shared read limit, which the checkouts and the webhook also need. A yes is
- * remembered, so the buyer is never counted again.
- */
-async function pastBuyerFromStripe(db: RateDb, req: Request, sessionId: unknown): Promise<boolean> {
-  if (typeof sessionId !== "string" || !STRIPE_SESSION_ID.test(sessionId)) return false;
-  if (await rememberedPastBuyer(db, sessionId)) return true;
-  const refusedAt = notPastBuyer.get(sessionId);
-  if (refusedAt && Date.now() - refusedAt < NOT_PAST_BUYER_MS) return false;
-  const key = Deno.env.get("STRIPE_SECRET_KEY");
-  if (!key) return false;
-  if (!(await stripeReadAllowed(db, req))) return false;
-  const until = await pastBuyerUntil(db, key, sessionId);
-  if (until === null) {
-    if (notPastBuyer.size > 5000) notPastBuyer.clear();
-    notPastBuyer.set(sessionId, Date.now());
-    return false;
-  }
-  await rememberPastBuyer(db, sessionId, until);
-  return true;
-}
-
-/** When a paid, unrefunded Career Path session's regeneration ends, or null when Stripe does not show one inside its 90 days. */
-async function pastBuyerUntil(db: RateDb, key: string, sessionId: string): Promise<number | null> {
-  try {
-    const stripe = new Stripe(key, { apiVersion: "2025-12-15.clover" });
-    const s = await stripe.checkout.sessions.retrieve(sessionId);
-    const created = Number((s as { created?: number }).created ?? 0) * 1000;
-    if (!checkoutSessionSettled(s)) return null;
-    if (String(s.metadata?.product_type ?? "") !== "career_path_simulator") return null;
-    if (!created || Date.now() - created > PAST_BUYER_DAYS * 86400_000) return null;
-    return (await sessionWasRefunded(db, sessionId)) ? null : created + PAST_BUYER_DAYS * 86400_000;
-  } catch {
-    return null;
-  }
-}
 
 // Free tier reachable by a stranger: an address allowance plus a
 // function-wide ceiling. A Career Path Simulator purchase (and only that) is
@@ -198,9 +109,13 @@ serve(async (req) => {
     if (!premium && !service) {
       return retired("The free Career Path tool has been retired.");
     }
+    // THE CLAIM IS THE ONLY PROOF, AND IT HAS NO AGE (S14X-143, pick B): a
+    // refunded purchase's claim names the product 'refunded' and another
+    // product's names that product, so both are refused here; a Career Path
+    // claim is served however old it is.
     if (premium && !service) {
       const paidError = await assertPaidSession(supabase, sessionId, CAREER_PATH_PRODUCTS);
-      if (paidError && !(await pastBuyerFromStripe(supabase as unknown as RateDb, req, sessionId))) {
+      if (paidError) {
         return new Response(
           JSON.stringify({ error: paidError, retryable: true }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }

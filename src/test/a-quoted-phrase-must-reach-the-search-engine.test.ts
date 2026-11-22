@@ -150,8 +150,9 @@ describe("a balanced pair of quotes survives to the RPC as one phrase", () => {
 
 describe("the wiring: phraseText feeds BOTH query derivations and the RPC, and only the tsquery consumers", () => {
   it("qText and its count twin are built with phraseText, never a plain join", () => {
-    expect(BOARD).toMatch(/const qText = phraseText\(qt\.terms\)\.slice\(0, 200\)/);
-    expect(BOARD).toMatch(/const qTextC = phraseText\(qtC\.terms\)\.slice\(0, 200\)/);
+    // .103 joins compound role words on the phrase text (search-alias.ts, n1600); quoted text passes through it as typed.
+    expect(BOARD).toMatch(/const qText = joinCompoundRoleWords\(phraseText\(qt\.terms\)\.slice\(0, 200\)/);
+    expect(BOARD).toMatch(/const qTextC = joinCompoundRoleWords\(phraseText\(qtC\.terms\)\.slice\(0, 200\)/);
     expect(BOARD).not.toMatch(/qtC?\.terms\.join\(" "\)/);
   });
 

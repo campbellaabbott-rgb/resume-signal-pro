@@ -10,6 +10,12 @@
  * WHAT HOLDS NOW, by rendering the real page with the network faked: the
  * error screen keeps the ranges and a retry, and the next successful fetch
  * shows the dashboard.
+ *
+ * S14X-191. Since the consent banner of 12 October 2026 an event is posted
+ * only after a visitor allows analytics, but the Audience card still said it
+ * counted "distinct browsers" and that an empty range meant "nobody arrived"
+ * because "the pipeline is verified working". An empty range now says only
+ * visitors who allowed analytics are counted and where all traffic is seen.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
@@ -47,5 +53,33 @@ describe("the analytics page after a failed fetch", () => {
     invoke.mockResolvedValue({ data: DATA, error: null });
     fireEvent.click(screen.getByRole("button", { name: /Retry/ }));
     await waitFor(() => expect(screen.getByText("Engagement Analytics")).toBeTruthy());
+  });
+});
+
+describe("the Audience card counts only visitors who allowed analytics (S14X-191)", () => {
+  const audience = (uniqueVisitors: number) => ({
+    ...DATA,
+    audience: { uniqueVisitors, totalEvents: uniqueVisitors * 3, returningVisitors: 0, eventsPerVisitor: 3, daily: [], bySurface: [], truncated: false },
+  });
+
+  it("an empty range is no proof that nobody came, and says where all traffic is counted", async () => {
+    invoke.mockResolvedValue({ data: audience(0), error: null });
+    render(<MemoryRouter><AnalyticsDashboard /></MemoryRouter>);
+    await waitFor(() => expect(screen.getByText("Engagement Analytics")).toBeTruthy());
+    const text = document.body.textContent ?? "";
+    expect(text).not.toMatch(/nobody arrived/);
+    expect(text).not.toMatch(/pipeline is verified working/);
+    expect(text).toMatch(/allowed analytics/);
+    expect(text).toMatch(/12 October 2026/);
+    expect(text).toMatch(/Search Console/);
+  });
+
+  it("labels its counts as visitors who allowed analytics, not distinct browsers", async () => {
+    invoke.mockResolvedValue({ data: audience(12), error: null });
+    render(<MemoryRouter><AnalyticsDashboard /></MemoryRouter>);
+    await waitFor(() => expect(screen.getByText("Engagement Analytics")).toBeTruthy());
+    const text = document.body.textContent ?? "";
+    expect(text).not.toMatch(/distinct browsers/);
+    expect(text).toMatch(/visitors who allowed analytics/);
   });
 });

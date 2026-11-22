@@ -72,6 +72,7 @@ import type { HiringRecordInput } from "@/components/jobs/company/HiringRecordCa
 import { buildLanderModel, isUsajobsBoard, FEDERAL_LISTING_RESULT_CAP, type OpenRolesValue as LanderOpenRoles } from "@/lib/company/lander-model";
 import { companyBoardHead, fieldBoardHead, jobsBoardHead, type HeadT } from "@/lib/seo/board-heads";
 import { count as fmtCount } from "@/lib/format";
+import { readTextFile } from "@/lib/resumeText";
 import { VERIFY_ON_VIEW_AFTER_HOURS } from "@/lib/seo/source-copy";
 import { keyBelongsToALayer } from "@/lib/board-keys";
 import { tPlural } from "@/lib/company/plural";
@@ -2872,7 +2873,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
   // (>= would relabel real unfiltered totals); a guard keeps this mirror equal
   // to the server's constant.
   const BOARD_COUNT_CAP = 10_000;
-  const fmtFacet = (n: number) => (n === BOARD_COUNT_CAP ? `${n.toLocaleString()}+` : n.toLocaleString());
+  const fmtFacet = (n: number) => (n === BOARD_COUNT_CAP ? `${fmtCount(n)}+` : fmtCount(n));
   const [filteredCats, setFilteredCats] = useState<Record<string, number> | null>(null);
   // The server refused to count fields for this text search (facetSource
   // "withheld": its counter is not the list's matcher), so the chips carry no
@@ -3624,7 +3625,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
   const withheldWhy = (h: FillCurve): string => {
     const g = hiringRecordGate(h);
     if (g.countsCopy === "relist") {
-      return t("jobsPage.hhGate.relist", HIRING_RECORD_GATE_COPY.relist, { n: (h.filled_roles_90d ?? 0).toLocaleString(), d: h.tracking_days });
+      return t("jobsPage.hhGate.relist", HIRING_RECORD_GATE_COPY.relist, { n: fmtCount(h.filled_roles_90d ?? 0), d: h.tracking_days });
     }
     // The gate names the sentence for every other refusal it can make (the
     // lap-read board, the unproven read, the test that reads other sites, a
@@ -5736,7 +5737,11 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
       const name = file.name.toLowerCase();
       let text = "";
       if (file.type === "text/plain" || name.endsWith(".txt")) {
-        text = await file.text();
+        // In the encoding it was saved in (S14X-283): a UTF-16 file read as
+        // UTF-8 came back with a NUL beside every letter. Text that is still
+        // not readable reads as nothing, and the too-short refusal below says so.
+        const read = await readTextFile(file);
+        text = read.garbled ? "" : read.text;
       } else {
         const fn = file.type === "application/pdf" || name.endsWith(".pdf") ? "parse-pdf" : "parse-docx";
         const fd = new FormData();
@@ -6295,8 +6300,8 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
   /** The figures a growth sentence prints: OUR two observation dates in the
    *  reader's language, the two served counts, and the rate as whole percent. */
   const growthFigures = useCallback((g: GrowthRow) => ({
-    latest: (g.latest_served ?? 0).toLocaleString(),
-    baseline: (g.baseline_served ?? 0).toLocaleString(),
+    latest: fmtCount(g.latest_served ?? 0),
+    baseline: fmtCount(g.baseline_served ?? 0),
     latestDay: dayLabel(g.latest_day, i18n.language),
     baselineDay: dayLabel(g.baseline_day, i18n.language),
     pct: growthPct(g),
@@ -8608,7 +8613,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                             gone: asPct(1 - employer!.still_open_14),
                             d: URGENT_FILL_MAX_DAYS,
                           })}{" "}
-                        {t("jobsPage.employerOutlivedCurveBasisDated", "Measured over the {{n}} of its roles that carry the company's own posting date, across {{tracking}} days of tracking.", { n: employer!.dated_n.toLocaleString(), tracking: employer!.tracking_days })}
+                        {t("jobsPage.employerOutlivedCurveBasisDated", "Measured over the {{n}} of its roles that carry the company's own posting date, across {{tracking}} days of tracking.", { n: fmtCount(employer!.dated_n), tracking: employer!.tracking_days })}
                         {employerQualified && (
                           <> {t("jobsPage.fillCoverageQualifier", "Across the {{pct}}% of these roles that carry a posting date from the company itself.", { pct: asPct(employer!.dated_coverage) })}</>
                         )}
@@ -8640,12 +8645,12 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                   <p className="text-[11px] text-muted-foreground">
                     {t("jobsPage.salaryContext", "Field median floor: {{sym}}{{median}} ({{currency}}, from {{n}} postings that state pay)", {
                       sym: { USD: "$", EUR: "€", GBP: "£" }[detailSalaryContext.currency] ?? "",
-                      median: Math.round(detailSalaryContext.median).toLocaleString(),
+                      median: fmtCount(Math.round(detailSalaryContext.median)),
                       currency: detailSalaryContext.currency,
                       // GROUPED. This was the only figure in the block
                       // printed raw, so the sentence read "from 17668
                       // postings" beside a median written "$114,000".
-                      n: detailSalaryContext.n.toLocaleString(),
+                      n: fmtCount(detailSalaryContext.n),
                     })}
                   </p>
                   {/* The median blends hourly/daily/monthly rates
@@ -9030,15 +9035,15 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
               // locale VALUE beats an inline default.
               countCategory === "other" && (data?.categories?.other ?? 0) > 0
               ? t("jobsPage.uncatCountLine2", "{{total}} live openings we could not sort into a field — ordinary roles our own field rules do not recognise, every one straight from the company's own hiring system.", {
-                  total: (data?.categories?.other ?? 0).toLocaleString(),
+                  total: fmtCount(data?.categories?.other ?? 0),
                 })
               : countCategory && ((data?.categories?.[countCategory] ?? 0) > 0 || (landerCategory && (data?.total ?? 0) > 0))
               ? t("jobsPage.landerCountLine", "{{total}} live {{category}} openings — every one straight from the company's own hiring system.", {
                   total: (() => {
                     const facet = data?.categories?.[countCategory] ?? 0;
-                    if (facet > 0) return facet.toLocaleString();
+                    if (facet > 0) return fmtCount(facet);
                     const tot = data?.total ?? 0;
-                    return data?.countCapped ? `${tot.toLocaleString()}+` : tot.toLocaleString();
+                    return data?.countCapped ? `${fmtCount(tot)}+` : fmtCount(tot);
                   })(),
                   category: t(`jobsPage.categories.${countCategory}`, countCategory),
                 })
@@ -9058,11 +9063,11 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
               // so eight locales cannot keep rendering the paired claim.
               ? (typeof data.companiesOpenCount === "number"
                 ? t("jobsPage.countLine", "{{total}} live openings from {{companyFeeds}} company feeds — every one straight from the company's own hiring system.", {
-                    total: data.totalAllCompanies.toLocaleString(),
-                    companyFeeds: data.companiesOpenCount.toLocaleString(),
+                    total: fmtCount(data.totalAllCompanies),
+                    companyFeeds: fmtCount(data.companiesOpenCount),
                   })
                 : t("jobsPage.countLineNoFeeds", "{{total}} live openings — every one straight from the company's own hiring system.", {
-                    total: data.totalAllCompanies.toLocaleString(),
+                    total: fmtCount(data.totalAllCompanies),
                   }))
               : t("jobsPage.subtitleShort", "Every job straight from the employer's own hiring system, dated in the last 30 days.")}
             {/* "Posted today" rides the count line (it wrapped to a line of
@@ -9076,7 +9081,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
               && Object.keys(boardFilterBody(filterState)).length === 0 && newToday !== null && (
               <span className="inline-flex items-center gap-1.5 ml-2 text-success whitespace-nowrap" data-board-new-today="board">
                 <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-success animate-pulse motion-reduce:animate-none" />
-                {t("jobsPage.newTodayLine", "{{n}} posted today.", { n: `${newToday.toLocaleString()}${newTodayCapped ? "+" : ""}` })}
+                {t("jobsPage.newTodayLine", "{{n}} posted today.", { n: `${fmtCount(newToday)}${newTodayCapped ? "+" : ""}` })}
               </span>
             )}
             {/* Live activity strip: the board IS alive — say so with measured
@@ -9093,9 +9098,9 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                     break the claim the whole page rests on — but stated as what
                     it is, it is the asset a live feed cannot match: a record of
                     what closed, not just what is open. */}
-                {!!data?.trackedTotal && t("jobsPage.trackedCorpus", "{{n}} postings tracked including closed roles", { n: data.trackedTotal.toLocaleString() })}
+                {!!data?.trackedTotal && t("jobsPage.trackedCorpus", "{{n}} postings tracked including closed roles", { n: fmtCount(data.trackedTotal) })}
                 {!!data?.trackedTotal && (takedownsToday !== null || recheckP50Min !== null) && " · "}
-                {takedownsToday !== null && t("jobsPage.takedownsLast24h", "{{n}} roles filled or closed in the last 24 hours", { n: takedownsToday.toLocaleString() })}
+                {takedownsToday !== null && t("jobsPage.takedownsLast24h", "{{n}} roles filled or closed in the last 24 hours", { n: fmtCount(takedownsToday) })}
                 {takedownsToday !== null && recheckP50Min !== null && " · "}
                 {recheckP50Min !== null && t("jobsPage.recheckLine", "median feed re-checked {{m}} min ago", { m: recheckP50Min })}
               </span>
@@ -10642,23 +10647,23 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                             too new, too small, set aside by us, not yet read —
                             never a guess. Both buckets are counted here. */}
                         {t("jobsPage.hiringSetAside3", "Set aside: {{n}} openings at at least {{c}} employers we cannot answer for — at least one of the two halves is unread for each, and nothing we did read cleared the bar. {{noClosure}} we hold no closure record for: we have never watched a posting of theirs come off the board, which can be a board bigger than one visit can read, where no closure of theirs is observable to us at all, or an employer who simply took nothing down while we watched; we cannot tell those apart from here. {{growthUnread}} we could not read a posting rate for: {{reasons}}. All of it is a gap in our record, not evidence about their hiring. What “Actively hiring” measures is employers we have watched take at least {{min}} roles down in the last {{days}} days and leave them down, or a board that served at least {{minNet}} more roles — at least {{minRate}}% more — than {{gdays}} days earlier, counted from our own daily observation on days we read it in full. A takedown is not a hire, and more roles served is not a headcount.", {
-                          n: hiringPartition.setAside.length.toLocaleString(),
-                          c: hiringPartition.setAsideEmployers.toLocaleString(),
-                          noClosure: hiringPartition.noClosureEmployers.toLocaleString(),
-                          growthUnread: hiringPartition.growthUnreadEmployers.toLocaleString(),
+                          n: fmtCount(hiringPartition.setAside.length),
+                          c: fmtCount(hiringPartition.setAsideEmployers),
+                          noClosure: fmtCount(hiringPartition.noClosureEmployers),
+                          growthUnread: fmtCount(hiringPartition.growthUnreadEmployers),
                           min: ACTIVELY_HIRING_MIN_CLOSED,
                           days: ACTIVELY_HIRING_WINDOW_DAYS,
                           minNet: GROWTH_MIN_NET_ADD,
                           minRate: Math.round(GROWTH_MIN_RATE * 100),
                           gdays: GROWTH_WINDOW_DAYS,
                           reasons: ([
-                            ["read", t("jobsPage.growthReasonRead", "{{c}} on boards we could only read part of, or failed to read, on some day of the window", { c: hiringPartition.growthReasons.read.toLocaleString() })],
-                            ["series", t("jobsPage.growthReasonSeries", "{{c}} with a gap in our own daily series", { c: hiringPartition.growthReasons.series.toLocaleString() })],
-                            ["tooNew", t("jobsPage.growthReasonTooNew", "{{c}} on boards we have tracked for fewer than {{minTenure}} days", { c: hiringPartition.growthReasons.tooNew.toLocaleString(), minTenure: GROWTH_MIN_TENURE_DAYS })],
-                            ["tooSmall", t("jobsPage.growthReasonTooSmall", "{{c}} on boards serving fewer than {{minBaseline}} roles at the window's start", { c: hiringPartition.growthReasons.tooSmall.toLocaleString(), minBaseline: GROWTH_MIN_BASELINE_SERVED })],
-                            ["replaced", t("jobsPage.growthReasonReplaced", "{{c}} on boards whose listings turned over entirely inside the window", { c: hiringPartition.growthReasons.replaced.toLocaleString() })],
-                            ["excluded", t("jobsPage.growthReasonExcluded", "{{c}} set aside by us", { c: hiringPartition.growthReasons.excluded.toLocaleString() })],
-                            ["unread", t("jobsPage.growthReasonUnread", "{{c}} not read yet", { c: hiringPartition.growthReasons.unread.toLocaleString() })],
+                            ["read", t("jobsPage.growthReasonRead", "{{c}} on boards we could only read part of, or failed to read, on some day of the window", { c: fmtCount(hiringPartition.growthReasons.read) })],
+                            ["series", t("jobsPage.growthReasonSeries", "{{c}} with a gap in our own daily series", { c: fmtCount(hiringPartition.growthReasons.series) })],
+                            ["tooNew", t("jobsPage.growthReasonTooNew", "{{c}} on boards we have tracked for fewer than {{minTenure}} days", { c: fmtCount(hiringPartition.growthReasons.tooNew), minTenure: GROWTH_MIN_TENURE_DAYS })],
+                            ["tooSmall", t("jobsPage.growthReasonTooSmall", "{{c}} on boards serving fewer than {{minBaseline}} roles at the window's start", { c: fmtCount(hiringPartition.growthReasons.tooSmall), minBaseline: GROWTH_MIN_BASELINE_SERVED })],
+                            ["replaced", t("jobsPage.growthReasonReplaced", "{{c}} on boards whose listings turned over entirely inside the window", { c: fmtCount(hiringPartition.growthReasons.replaced) })],
+                            ["excluded", t("jobsPage.growthReasonExcluded", "{{c}} set aside by us", { c: fmtCount(hiringPartition.growthReasons.excluded) })],
+                            ["unread", t("jobsPage.growthReasonUnread", "{{c}} not read yet", { c: fmtCount(hiringPartition.growthReasons.unread) })],
                           ] as const)
                             .filter(([fam]) => hiringPartition.growthReasons[fam] > 0)
                             .map(([, s]) => s)
@@ -10670,10 +10675,10 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                             two hiring systems share, for which no employer fact
                             is read at all. */}
                         {hiringPartition.withheldEmployers > 0 && (
-                          <>{t("jobsPage.hiringSetAsideWithheld", "{{w}} we hold a closure record for and do not print: on their board our re-list detection is not working, or we have not watched it long enough for a takedown to have stayed down. That is a gap in our record, not a fact about the employer.", { w: hiringPartition.withheldEmployers.toLocaleString() })}{" "}</>
+                          <>{t("jobsPage.hiringSetAsideWithheld", "{{w}} we hold a closure record for and do not print: on their board our re-list detection is not working, or we have not watched it long enough for a takedown to have stayed down. That is a gap in our record, not a fact about the employer.", { w: fmtCount(hiringPartition.withheldEmployers) })}{" "}</>
                         )}
                         {hiringPartition.sharedEmployers > 0 && (
-                          <>{t("jobsPage.hiringSetAsideShared", "{{s}} are board names two hiring systems carry: we read no employer fact for those, so neither half is read for them.", { s: hiringPartition.sharedEmployers.toLocaleString() })}{" "}</>
+                          <>{t("jobsPage.hiringSetAsideShared", "{{s}} are board names two hiring systems carry: we read no employer fact for those, so neither half is read for them.", { s: fmtCount(hiringPartition.sharedEmployers) })}{" "}</>
                         )}
                         <button
                           type="button"
@@ -10791,7 +10796,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                       question still works without a number in front of it. */}
                   {data?.totalAllCompanies
                     ? t("jobsPage.orientTitle", "{{total}} live openings — where do you want to start?", {
-                        total: data.totalAllCompanies.toLocaleString(),
+                        total: fmtCount(data.totalAllCompanies),
                       })
                     : t("jobsPage.orientTitlePlain", "Live openings — where do you want to start?")}
                 </h2>
@@ -11206,7 +11211,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                   {typeof data?.salaryFromQuery === "number" && (
                     <p className="text-xs text-muted-foreground mb-2">
                       {t("jobsPage.salaryFromQuery", "Read {{amount}} in your search as a minimum pay filter.", {
-                        amount: data.salaryFromQuery.toLocaleString(),
+                        amount: fmtCount(data.salaryFromQuery),
                       })}
                     </p>
                   )}
@@ -11469,7 +11474,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
               <div className="flex flex-wrap justify-center gap-2">
                 {(widenHelp ?? []).map((s) => (
                   <Button key={s.key} size="sm" variant="outline" className="h-auto max-w-full whitespace-normal" onClick={s.clear}>
-                    {t("jobsPage.zeroRemove", "Remove {{label}} — {{n}} openings", { label: s.label, n: `${s.count.toLocaleString()}${s.capped ? "+" : ""}` })}
+                    {t("jobsPage.zeroRemove", "Remove {{label}} — {{n}} openings", { label: s.label, n: `${fmtCount(s.count)}${s.capped ? "+" : ""}` })}
                   </Button>
                 ))}
                 {widenHelp === null && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
@@ -11499,14 +11504,14 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                   <div className="text-[13px] min-w-0">
                     <p className="text-foreground">
                       {disclosure.kind === "salary"
-                        ? t("jobsPage.discSalary", "{{shown}} of these employers publish pay. Another {{hidden}} openings match everything else you asked for, but don't state a salary — so this filter hides them.", { shown: disclosure.shown.toLocaleString(), hidden: disclosure.hidden.toLocaleString() })
+                        ? t("jobsPage.discSalary", "{{shown}} of these employers publish pay. Another {{hidden}} openings match everything else you asked for, but don't state a salary — so this filter hides them.", { shown: fmtCount(disclosure.shown), hidden: fmtCount(disclosure.hidden) })
                         // discWorkMode2, not discWorkMode: the wording is the
                         // same and the NUMBER under it changed meaning — it
                         // is now the postings that state no mode at all,
                         // which is what the sentence always claimed. The old
                         // key is retired from every locale so no translation
                         // can be read against the old arithmetic.
-                        : t("jobsPage.discWorkMode2", "{{shown}} of these employers state where the work happens. Another {{hidden}} openings match everything else but carry no stated mode — their employer said nothing, or said two different things and we refused to choose — so this filter hides them.", { shown: disclosure.shown.toLocaleString(), hidden: disclosure.hidden.toLocaleString() })}
+                        : t("jobsPage.discWorkMode2", "{{shown}} of these employers state where the work happens. Another {{hidden}} openings match everything else but carry no stated mode — their employer said nothing, or said two different things and we refused to choose — so this filter hides them.", { shown: fmtCount(disclosure.shown), hidden: fmtCount(disclosure.hidden) })}
                     </p>
                     <button
                       type="button"
@@ -11624,13 +11629,13 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                   : data?.relatedUnavailable === true && typeof data?.total === "number"
                   ? t("jobsPage.resultsSummaryTitleOnly", "Showing {{shown}} of {{total}} openings with your search in the title", {
                       shown: shownCount,
-                      total: `${data.total.toLocaleString()}${data.countCapped ? "+" : ""}`,
+                      total: `${fmtCount(data.total)}${data.countCapped ? "+" : ""}`,
                     })
                   : typeof data?.relatedTotal === "number" && data.relatedTotal > 0
                   ? t("jobsPage.resultsSummarySegmented", "Showing {{shown}} — {{exact}} exact and {{related}} where the term appears in the description", {
                       shown: shownCount,
-                      exact: (data?.total ?? 0).toLocaleString(),
-                      related: `${data.relatedTotal.toLocaleString()}${data.relatedCapped ? "+" : ""}`,
+                      exact: fmtCount(data?.total ?? 0),
+                      related: `${fmtCount(data.relatedTotal)}${data.relatedCapped ? "+" : ""}`,
                     })
                   : data?.countUnavailable
                   // The server couldn't compute an exact total for this filter.
@@ -11639,7 +11644,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                   // filter really matches six figures.
                   ? (typeof data?.totalAtLeast === "number" && data.totalAtLeast > shownCount
                       ? t("jobsPage.resultsSummaryFloor", "Showing {{shown}} of {{floor}}+ matching openings", {
-                          shown: shownCount, floor: data.totalAtLeast.toLocaleString(),
+                          shown: shownCount, floor: fmtCount(data.totalAtLeast),
                         })
                       // An exclusion withdraws the exact total (no count ever saw
                       // the exclusion predicate), but the pre-exclusion count is a
@@ -11647,7 +11652,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                       // of a bare number with no figure at all.
                       : typeof data?.totalBeforeExclusions === "number" && data.totalBeforeExclusions >= shownCount
                       ? t("jobsPage.resultsSummaryCeiling", "Showing {{shown}} of up to {{ceiling}} openings before your exclusions", {
-                          shown: shownCount, ceiling: data.totalBeforeExclusions.toLocaleString(),
+                          shown: shownCount, ceiling: fmtCount(data.totalBeforeExclusions),
                         })
                       : t("jobsPage.resultsSummaryNoTotal", "Showing {{shown}} matching openings", { shown: shownCount }))
                   // "across N companies" only when nothing narrows the list:
@@ -11660,8 +11665,8 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                   ? t("jobsPage.resultsSummaryFiltered", "Showing {{shown}} of {{total}} matching openings", {
                   shown: shownCount,
                   total: data?.countCapped || data?.relatedCapped
-                    ? `${pageTotalCount.toLocaleString()}+`
-                    : pageTotalCount.toLocaleString(),
+                    ? `${fmtCount(pageTotalCount)}+`
+                    : fmtCount(pageTotalCount),
                 })
                   // Same pairing rule as the headline above: the feeds clause
                   // needs the SERVABLE board count (boards with at least one
@@ -11674,15 +11679,15 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                   // The server caps counting for speed; above the cap it says so,
                   // and we render "10,000+" rather than passing the cap off as exact.
                   total: data?.countCapped || data?.relatedCapped
-                    ? `${pageTotalCount.toLocaleString()}+`
-                    : pageTotalCount.toLocaleString(),
-                  companyFeeds: data.companiesOpenCount.toLocaleString(),
+                    ? `${fmtCount(pageTotalCount)}+`
+                    : fmtCount(pageTotalCount),
+                  companyFeeds: fmtCount(data.companiesOpenCount),
                 })
                   : t("jobsPage.resultsSummaryFiltered", "Showing {{shown}} of {{total}} matching openings", {
                   shown: shownCount,
                   total: data?.countCapped || data?.relatedCapped
-                    ? `${pageTotalCount.toLocaleString()}+`
-                    : pageTotalCount.toLocaleString(),
+                    ? `${fmtCount(pageTotalCount)}+`
+                    : fmtCount(pageTotalCount),
                 })}
                 {/* THE BOARD SEARCHED FOR SOMETHING NOBODY TYPED.
                     Dropping a résumé now puts a role in the search box, because
@@ -11942,7 +11947,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                            response had measured, in nine languages — the defect
                            class this build exists to remove. */
                         ? typeof data?.sortScopeRows === "number"
-                          ? t("jobsPage.sortedNewestWindow", "Newest first within the closest {{n}} matches this order can reach — not the newest of every match", { n: data.sortScopeRows.toLocaleString() })
+                          ? t("jobsPage.sortedNewestWindow", "Newest first within the closest {{n}} matches this order can reach — not the newest of every match", { n: fmtCount(data.sortScopeRows) })
                           : t("jobsPage.sortedNewestWindowUnbounded", "Newest first among the closest matches this order could reach — not the newest of every match")
                         : data?.ranked
                           ? t("jobsPage.sortedRelevance", "Sorted by relevance — title matches first")
@@ -12014,7 +12019,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                 >
                   {t("jobsPage.benchmarkLine", "Advertised pay in this field: median floor {{symbol}}{{median}} ({{currency}}) — from {{n}} postings here that state pay", {
                     symbol: { USD: "$", EUR: "€", GBP: "£" }[benchmarks[category].currency] ?? "",
-                    median: Math.round(benchmarks[category].median).toLocaleString(),
+                    median: fmtCount(Math.round(benchmarks[category].median)),
                     currency: benchmarks[category].currency,
                     n: benchmarks[category].n,
                   })}
@@ -12229,7 +12234,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                                        coverage qualifier this tooltip had room
                                        for and omitted while the panel two
                                        screens away printed it. */
-                                    title={t("jobsPage.urgencyTipRateDated", "Measured over the {{n}} of this company's roles that carry its own posting date: up to {{pct}}% came down for good within {{d}} days of being posted ({{lo}}–{{hi}}% either way). Roles still up, and roles that passed our 30-day cap, are counted as unfinished rather than left out. Worth applying early.", { n: hh.dated_n.toLocaleString(), pct: asPct(hh.fill_rate_14), d: URGENT_FILL_MAX_DAYS, lo: asPct(hh.fill_rate_14_lo), hi: asPct(hh.fill_rate_14_hi) })
+                                    title={t("jobsPage.urgencyTipRateDated", "Measured over the {{n}} of this company's roles that carry its own posting date: up to {{pct}}% came down for good within {{d}} days of being posted ({{lo}}–{{hi}}% either way). Roles still up, and roles that passed our 30-day cap, are counted as unfinished rather than left out. Worth applying early.", { n: fmtCount(hh.dated_n), pct: asPct(hh.fill_rate_14), d: URGENT_FILL_MAX_DAYS, lo: asPct(hh.fill_rate_14_lo), hi: asPct(hh.fill_rate_14_hi) })
                                       + (coverageBand(hh.dated_coverage) === "qualified"
                                         ? " " + t("jobsPage.fillCoverageQualifier", "Across the {{pct}}% of these roles that carry a posting date from the company itself.", { pct: asPct(hh.dated_coverage) })
                                         : "")}
@@ -12529,16 +12534,16 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                     {endKind === "unconfirmed"
                       ? t("jobsPage.endUnconfirmedTitle", "That's everything this search returned")
                       : endKind === "narrow"
-                      ? t("jobsPage.endNarrowTitle", "End of results — {{n}} openings shown for these filters", { n: shownCount.toLocaleString() })
+                      ? t("jobsPage.endNarrowTitle", "End of results — {{n}} openings shown for these filters", { n: fmtCount(shownCount) })
                       : endKind === "broad"
-                      ? t("jobsPage.endBroadTitle", "You've reached the end — {{n}} openings shown", { n: shownCount.toLocaleString() })
+                      ? t("jobsPage.endBroadTitle", "You've reached the end — {{n}} openings shown", { n: fmtCount(shownCount) })
                       /* The figure is the cards shown, like every other branch;
                          what changes is the noun it is attached to. This page
                          reached the end of what its ORDER can reach, which is
                          not the end of what matches — and saying "for these
                          filters" here was the misattribution. */
                       : endKind === "sortWindow"
-                      ? t("jobsPage.endSortWindowTitle", "End of what “newest first” can reach — {{n}} openings shown", { n: shownCount.toLocaleString() })
+                      ? t("jobsPage.endSortWindowTitle", "End of what “newest first” can reach — {{n}} openings shown", { n: fmtCount(shownCount) })
                       : t("jobsPage.endUnknownTitle", "That's the last page for this search")}
                   </p>
                   {endKind === "unconfirmed" ? (
@@ -12583,7 +12588,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                             card quote a bound no reply had sent. */}
                         {typeof data?.sortScopeRows === "number"
                           ? t("jobsPage.endSortWindowBody", "The board could only put the closest {{n}} matches in date order for this search, so the list stops here rather than at the end of everything that matches. Relevance order pages through more of them.", {
-                            n: data.sortScopeRows.toLocaleString(),
+                            n: fmtCount(data.sortScopeRows),
                           })
                           : t("jobsPage.endSortWindowBodyUnbounded", "The board could only put the closest matches it could reach in date order for this search, so the list stops here rather than at the end of everything that matches. Relevance order pages through more of them.")}
                       </p>
@@ -12643,7 +12648,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                       <div className="flex flex-wrap justify-center gap-2">
                         {(widenHelp ?? []).map((s) => (
                           <Button key={s.key} size="sm" variant="outline" className="h-auto max-w-full whitespace-normal" onClick={s.clear}>
-                            {t("jobsPage.zeroRemove", "Remove {{label}} — {{n}} openings", { label: s.label, n: `${s.count.toLocaleString()}${s.capped ? "+" : ""}` })}
+                            {t("jobsPage.zeroRemove", "Remove {{label}} — {{n}} openings", { label: s.label, n: `${fmtCount(s.count)}${s.capped ? "+" : ""}` })}
                           </Button>
                         ))}
                       </div>
@@ -13089,7 +13094,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                             {/* A headcount prints with the date it was true or not at all (D11). */}
                             {datedHeadcount(ctx) && (
                               <li>{t("jobsPage.employerCtx.employees", "≈{{n}} employees ({{basis}})", {
-                                n: datedHeadcount(ctx)!.n.toLocaleString(),
+                                n: fmtCount(datedHeadcount(ctx)!.n),
                                 basis: ctx.employeeBasis === "yc_self_reported"
                                   ? t("jobsPage.intel.basisYc", "YC profile")
                                   : t("jobsPage.intel.basisPr", "public records"),

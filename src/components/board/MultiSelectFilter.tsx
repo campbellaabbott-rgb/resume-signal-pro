@@ -1,6 +1,7 @@
 import { useMemo, useRef } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { count as fmtCount } from "@/lib/format";
 
 /**
  * A FILTER THE SERVER HAS ACCEPTED ALL ALONG AND THE PAGE COULD NOT EXPRESS.
@@ -140,7 +141,7 @@ export function MultiSelectFilter({
                 </span>
                 <span className="min-w-0 flex-1 truncate">{o.label}</span>
                 {typeof o.count === "number" && o.count > 0 && (
-                  <span className="text-xs text-muted-foreground">{o.count.toLocaleString()}{o.capped ? "+" : ""}</span>
+                  <span className="text-xs text-muted-foreground">{fmtCount(o.count)}{o.capped ? "+" : ""}</span>
                 )}
               </button>
             );

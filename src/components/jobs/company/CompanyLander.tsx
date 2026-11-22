@@ -16,6 +16,12 @@
 // readers once per token (each asked once while in flight, so the rail and
 // the accordion mounted together make one request each) and asks none of
 // them on a board name two hiring systems share.
+//
+// WHOSE ROLES THE INTEL COUNTS IS DECIDED ONCE TOO (S14X-195): intelScope
+// (pooled-scope.ts) judges the reader's counts against the page's figure, and
+// the header's countries and the About sections' pay line both read that one
+// answer, the header by a prop and the rail and accordion through
+// IntelScopeContext.
 import { useEffect, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { datedHeadcount } from "@/lib/headcount";
@@ -36,6 +42,7 @@ import { CompanyEmptyState } from "./CompanyEmptyState";
 import { AboutEmployerAccordion, AboutEmployerRail, type AboutEmployerProps, type CompanyProfileData } from "./AboutEmployer";
 import type { HiringRecordInput } from "./HiringRecordCard";
 import type { PayStated } from "./PaySummary";
+import { IntelScopeContext, intelScope } from "./pooled-scope";
 
 export type { CompanyProfileData } from "./AboutEmployer";
 
@@ -88,6 +95,7 @@ export function CompanyLanderHeader(p: CompanyLanderHeaderProps) {
       token={p.token}
       system={p.source ? p.labelOf(p.source) : null}
       countries={(p.profile?.intel.intel?.countries ?? []).map((c) => c.country)}
+      countriesScope={intelScope(p.profile?.intel.intel, p.model)}
       workMode={p.workMode}
       workModeAsOf={p.workModeAsOf}
       payStated={p.payStated}
@@ -173,12 +181,20 @@ export function CompanyLanderRail(p: AboutEmployerProps & { labelOf?: (source: s
       ? <CollisionBoardsPanel token={p.token} boards={p.model.boards} labelOf={p.labelOf} onShowOnly={p.onShowOnly} />
       : null;
   }
-  return <AboutEmployerRail {...p} />;
+  return (
+    <IntelScopeContext.Provider value={intelScope(p.profile.intel.intel, p.model)}>
+      <AboutEmployerRail {...p} />
+    </IntelScopeContext.Provider>
+  );
 }
 
 /** The phone accordion after the third card. */
 export function CompanyLanderAccordion(p: AboutEmployerProps) {
-  return <AboutEmployerAccordion {...p} />;
+  return (
+    <IntelScopeContext.Provider value={intelScope(p.profile.intel.intel, p.model)}>
+      <AboutEmployerAccordion {...p} />
+    </IntelScopeContext.Provider>
+  );
 }
 
 /** Similar employers after the first page of results, on a phone. */

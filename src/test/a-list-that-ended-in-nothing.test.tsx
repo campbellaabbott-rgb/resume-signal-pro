@@ -160,7 +160,7 @@ describe("a list that ended in nothing", () => {
     expect(block.match(SERVER_COUNTS), "the terminal card quotes a server total").toBe(null);
     // The one figure it may show is the rows on this page, the same basis the
     // results summary and the screen-reader line already use.
-    expect(block).toMatch(/n: shownCount\.toLocaleString\(\)/);
+    expect(block).toMatch(/n: fmtCount\(shownCount\)/);
   });
 
   it("says nothing numeric when the server could not count", () => {
@@ -614,7 +614,7 @@ describe("a list that ended in nothing — the guard has teeth", () => {
   });
 
   it("a terminal card that prints a server total fails the count check", () => {
-    const card = (n: string) => `{listExhausted && (<p>{t("jobsPage.endNarrowTitle", "All {{n}} results", { n: ${n}.toLocaleString() })}</p>)}`;
+    const card = (n: string) => `{listExhausted && (<p>{t("jobsPage.endNarrowTitle", "All {{n}} results", { n: fmtCount(${n}) })}</p>)}`;
     expect(terminalBlock(card("pageTotalCount")).match(SERVER_COUNTS)).not.toBe(null);
     expect(terminalBlock(card("shownCount")).match(SERVER_COUNTS)).toBe(null);
   });

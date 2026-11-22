@@ -24493,3 +24493,223 @@ In `supabase/functions/job-board/anon-budget.ts`, above: `pass: { configured: op
 
 configured: TURNSTILE_SECRET_KEY is set on this function; required: the row's requirePass;
 cap: the row's passCap (reads per pass per UTC day), null = the counter's default of 600.
+
+## n1585-export-const-host_delay_ms-readonly-reco
+
+In `supabase/functions/_shared/host-gate.ts`, above: `export const HOST_DELAY_MS: Readonly<Record<string, number>> = {`
+
+ITEM 18 (board .103): A HOST'S STATED CRAWL-DELAY IS HONOURED BY EVERY LANE.
+
+api.lever.co and api.eu.lever.co state `Crawl-delay: 1`; careers.84lumber.com,
+careers.petsmart.com and careers.aarp.org state 5 (robots read 2026-11-15/16,
+legal-max carried/raw), and every other iCIMS tenant is paced at 5 until its
+own robots is read (legal-max's default for a tenant not yet read). One
+isolate's clock is not enough: the chain's hop, the description sweep, the
+pass-end steps and a visitor's detail read run in different isolates at
+once. So each paced host has one job_board_meta row, `host_gate:<host>`,
+whose v.next_at is the earliest start of the next request to it. A request
+takes the slot by a conditional update on the row's updated_at as it read
+it; a lane that loses reads again and waits out the remainder, and past its
+wall budget gives up (the caller defers the board, never fails it). The row
+is created on first use by an insert whose conflict means another lane took
+it first, so no table is added. Inside one isolate requests to a host queue
+behind each other, so only one at a time contends for the row. If the row
+cannot be read or written, the isolate's own clock still paces it.
+
+The row also keeps the pacing figures status shows: reads, the smallest gap
+between two starts (minGapMs), since and last. Pure but for the store, so
+vitest walks it.
+
+## n1586-export-async-function-awaithostslot-url
+
+In `supabase/functions/_shared/host-gate.ts`, above: `export async function awaitHostSlot(url: string, deps: GateDeps): Promise<boolean> {`
+
+Waits for the host's slot and takes it. true: start the request now. false:
+the slot did not come inside `maxWaitMs`, counted from the call, queueing
+included (the caller defers: a 429 to the slice, never a failure).
+
+## n1587-type-board-source-string-token-string
+
+In `supabase/functions/job-board/bootstrap-seed.ts`, above: `type Board = { source: string; token: string };`
+
+W4-1 (board .103): A DEPLOY SEEDS THE BOOTSTRAP LANE WITH WHAT IS NEW, NOT
+WITH EVERY EMPTY BOARD.
+
+Through .102 a BUILD_VERSION change appended every board with no stored row
+(get_empty_boards), and an empty queue at an unchanged version seeded the
+same list again: 11,776 at the .102 deploy, 4,576 still pending 2026-11-17
+21:21Z, about 27-32 lap-minutes (model F) or 87-113 (model R) spent reading
+boards the rotation reads anyway, most of them read and found empty many
+times over (capacity.md section 6).
+
+Now a version change REPLACES the queue with, in this order:
+  (a) the tokens this build repointed: a RETIRED_TWIN_KEYS entry the last
+      seed had not seen whose token the catalogue carries under another
+      vendor (their old reads say nothing about the new board);
+  (b) the empties no read has ever stamped (no job_board_verifications row
+      under the token): boards a catalogue change added, which the rotation
+      would otherwise reach only a lap later;
+  (c) the empties of a vendor whose READER_VERSION entry changed (a new
+      reader may find what the old one could not).
+The old queue held only what the old rule seeded; anything in it no read
+has stamped comes back under (b), so nothing the lane exists for is lost,
+and a token leaves the next seed once a read stamps it, so the drain the
+2026-08-24 restart defect never let finish now ends. If the stamps cannot be
+read, nothing is seeded and the version is not stamped, so the next slice
+tries again. An empty queue at an unchanged version seeds nothing.
+
+Pure, so vitest walks it.
+
+## n1588-export-function-repointedtokens-twins-re
+
+In `supabase/functions/job-board/bootstrap-seed.ts`, above: `export function repointedTokens(twins: readonly string[], storedTwins: readonly string[] | null | undefined, sources: readonly Board[]): str`
+
+(a): the tokens of twin keys the last seed had not seen (all of them when it
+stored none), each only while its own key has left the catalogue and its
+token is carried under another vendor.
+
+## n1589-export-function-clearrepointedfailures-v
+
+In `supabase/functions/job-board/bootstrap-seed.ts`, above: `export function clearRepointedFailures(v: Record<string, unknown>, tokens: readonly string[], sourcesOf: (token: string) => readonly string[`
+
+The failure state a repointed token leaves behind: its entries under the
+bare token and under each source:token key, in every map that holds them.
+null when it holds none, so the caller writes nothing.
+
+## n1590-export-type-capclock-now-number-sleep
+
+In `supabase/functions/job-board/rate-cap.ts`, above: `export type CapClock = { now: () => number; sleep: (ms: number) => Promise<void> };`
+
+W4-17 (board .103): A CAP ON ONE VENDOR'S DETAIL READS.
+
+The description sweep runs DESC_SWEEP_CONCURRENCY (8) wide whatever the
+vendor, so a hop of SmartRecruiters rows opened eight posting reads at once,
+back to back. A cap admits a call only while fewer than `concurrent` are in
+flight and fewer than `perSecond` started in the last second, in the order
+they asked; the rest wait their turn. Per isolate. Pure but for the clock,
+so vitest walks it on a virtual one.
+
+## n1591-export-const-disk_offset_gb
+
+In `supabase/functions/job-board/disk-band.ts`, above: `export const DISK_OFFSET_GB = 0.73;`
+
+Board .103 (spec §7, T-20): THE DISK BAND STATUS SHOWS, NEVER THE SIZE.
+
+cost2's nightly stamp keeps a ring of database sizes in job_board_meta
+`storage_size_ring` (newest first). Lovable's "used" figure is read as
+(db_bytes + wal_bytes) / 1e9 + an offset, 0.73 GB until two dated owner
+readings calibrate it. Status shows only the band that reading falls in
+(<28, 28-32, 32-34, ≥34 GB) and the stamp's time; the exact figure stays in
+the service-only ring. No reading, or one without its WAL figure, is null:
+a band without the WAL could read low, and the add gate stops on it.
+
+## n1600-one-role-word-in-every-spelling
+
+In `supabase/functions/job-board/search-alias.ts`, above: `const SOFTWARE_FAMILY: ReadonlySet<string> = new Set([`
+
+Measured live 2026-11-17 with labelled probes (x-rb-budget: probe, x-rb-caller:
+maintenance), the board's most-searched terms read very differently by spelling:
+
+    back end developer     32  (SIMPLE)   backend developer    281   backend engineer    1,079
+    front end developer    70  (SIMPLE)   frontend developer   158   frontend engineer     320
+    dev ops engineer       21             devops engineer   1,117
+    a.i. engineer           3  (junk: "Engineer I-... a Doubletree")
+
+"end", "dev" and "ops" are three letters, so the spaced spelling took the
+SIMPLE route and was matched literally; the hyphen made "back-end" one more
+literal word; "a.i." became the words "a" and "i". The fix joins the compound
+once, before routing (joinCompoundRoleWords), so the query takes the ranked
+route and the alias table (backend: back end, frontend: front end, fullstack,
+devops, devsecops) carries every spelling back into the title tier through
+search_jobs' existing title_tsv index. No new OR arm and no new index: the
+ilike substring arms still read the raw typed terms, a superset.
+
+Back end and front end join only beside a role or software word: a grocery's
+"Front End Manager" is a checkout, and it reads exactly as before.
+
+Developer and engineer trade places only inside a software family
+(SOFTWARE_FAMILY), and never with a word from NOT_SOFTWARE: the board's own
+titles show "Business Developer", "Sales Engineer", "Property Developer",
+"Real Estate Developer", "Land Developer", "Product Engineer", "Web Content
+Developer", "Application Engineer" and "Learning Developer" are other jobs.
+Bare "developer" or "engineer" never swaps.
+
+Corpus (src/test/fixtures/search-reach-corpus-2026-11-17.json, 86 queries over
+real board titles, 39,796 query/title cases judged by helpers/search-reach.ts
+relevant(), not by either matcher): recall 0.478 -> 0.921, precision 0.916 ->
+0.925 against 0b9d5dfab; no query lost a relevant title it found; every query
+outside the software families reads identically. Ranked search stays
+"ranked": true. The search log keeps body.q as typed.
+
+## n1601-the-figures-own-clause
+
+In `supabase/functions/_shared/salary-extract.ts`, above: `const RANGE_ALL = new RegExp(RANGE_RE.source, "gi");`
+
+Read 2026-11-17 on five Greenhouse boards whose postings carry structured pay
+(pay_transparency=true): the description miner found the stated pay on 23 of
+Coinbase's 248 and 13 of Airbnb's 163, because the words NEAR the range refused
+it, never the range's own words:
+
+    "...eligible for bonus, equity, benefits, and Employee Travel Credits. Pay Range $168,000 — $203,000 USD"
+    "Annual base salary range (excluding equity and bonus): $166,345 — $195,700 USD"
+    "Zone 1 Pay Range $311 — $325,000 USD Zone 2 Pay Range $330,000 — ..."   (first range implausible; the miner stopped)
+
+Three changes, each only ever turning a null into a figure:
+1. NOT_PAY reads the 40 characters before a figure from the start of its own
+   sentence (cut after . ! ? followed by a space, or at ; • | ·). The 20 after
+   are read whole: cut there, "Average deal size $30,000 - $60,000. Sign-on
+   bonus: ..." read the deal size as pay (benchmark rc3-s100; and r4-036).
+2. A range a pay label names (pay range, salary range, base salary, base pay,
+   with its own parenthesis) is pay, unless the two words before the label are
+   not pay ("bonus pay range") or a NOT_PAY word stands between label and figure.
+3. A refused range no longer ends the search: the next range is read. If every
+   range is refused, no single figure is taken (unchanged).
+
+Because the new window is a substring of the old and the label only relaxes,
+no range main accepted is refused and the first accepted range is unchanged:
+wherever main answered, the answer is the same text (tested on both corpora).
+Corpus: src/test/fixtures/pay-text-miner-corpus-2026-11-17.json (562 distinct
+excerpts of 1,123 postings): right 773 -> 1,115 of 1,123, never a wrong figure.
+The w4b-fix3 benchmark moved 14 answers, all safe-miss null -> the stated pay.
+
+## n1602-the-pay-a-greenhouse-board-states
+
+In `supabase/functions/job-board/normalize.ts`, above: `export function greenhouseSalary(ranges: readonly GreenhousePayRange[] | null | undefined): string | null {`
+
+S9-010. Greenhouse's job board API states a posting's pay when asked with
+pay_transparency=true: pay_input_ranges, each {min_cents, max_cents,
+currency_type, title, blurb, description}. The list asked without it, so every
+Greenhouse row's pay came from mining the description, and a light board (no
+content) had none at all. Read 2026-11-17, one GET per board:
+
+    board        postings  stated  main  now   gained  lost
+    coinbase        259      248     23   236    213      0
+    airbnb          200      163     13   157    144      0
+    databricks      902      470      0   467    467      0   (light: main's list read no pay; its description sweep mines it)
+    robinhood       166      154    157   157      0      0
+    figma           139       92     92    92      0      0
+
+The list now asks for it on both reads (content=true&pay_transparency=true, or
+pay_transparency=true alone on a light list). Payload: the Databricks content
+list 9.87 MB -> 10.61 MB (+7.5%); its light list 0.78 MB -> 1.51 MB, because
+each range carries HTML blurb and description prose. The streamed light read
+(slim-stream SLIM_SPECS.greenhouse) keeps pay_input_ranges and drops those two.
+A content list near MAX_RESPONSE_BYTES or AUTO_LIGHT_THRESHOLD_CHARS can cross
+it and read light from then on; the pay still arrives on the light list.
+
+The first range that reads as a rate of pay is the posting's pay, in the order
+the posting lists its zones (the range the miner read before). A range whose
+top is more than five times its floor is passed over (Databricks "Zone 1 Pay
+Range $311 — $325,000"), as the miner passes over it in prose. The period is
+the label's own word (Hourly Rate, Annual base salary range, Mexico Monthly Pay
+Range); a label with none ("Pay Range", "Zone 2 Pay Range", "Internship")
+states the figures only, through statedPayText with a null period, and the
+parser reads them by the same magnitude rules it reads mined figures with.
+
+Stored rows: every list visit re-reads every posting's pay and patches it, so
+no version bump is needed (SALARY_PARSE_VERSION re-parses stored strings only,
+and would not reach a row whose salary is null). The first lap changes the
+text of rows the miner had read ("$166,000—$232,400" -> "USD 166,000.00 –
+232,400.00"): same money patches unlogged already (statesTheSameMoney); the
+rest is our reading too (Robinhood Toronto read as USD, now CAD), so
+"greenhouse:salary" sits in OUR_READING_CHANGED until 2026-12-31.

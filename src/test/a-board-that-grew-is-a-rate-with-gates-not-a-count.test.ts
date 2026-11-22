@@ -243,7 +243,7 @@ describe("a board that grew is a rate with gates, not a count", () => {
       all(src, re).filter((i) => !ok(i)).map((i) => `${lineOf(src, i)}: ${src.slice(Math.max(0, i - 30), i + 40).replace(/\s+/g, " ").trim()}`);
     expect(stray(/\.(net|rate)\b/, (i) => inside(NORMALISE, i) || inside(PCT, i)),
       "net or rate is read outside normaliseGrowth / growthPct — the bar is being re-derived on the client").toEqual([]);
-    expect(stray(/\.(baseline_served|latest_served)\b(?!\s*\?\?\s*0\)\.toLocaleString\(\))/, (i) => inside(NORMALISE, i)),
+    expect(stray(/(?<!fmtCount\(\w+\??)\.(baseline_served|latest_served)\b/, (i) => inside(NORMALISE, i)),
       "a served count is read other than straight into a printed figure — a gate is being re-derived on the client").toEqual([]);
     expect(stray(/\.(tenure_days|days_observed|days_expected|ledger_days_expected|board_days_ok|board_days_bad|untracked_departures|removed_departures|observed_arrivals)\b/, (i) => inside(NORMALISE, i)),
       "a gate's input is read outside normaliseGrowth — no surface prints these and no site may gate on them").toEqual([]);

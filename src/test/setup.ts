@@ -90,6 +90,15 @@ globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
       headers: { "content-type": "application/json" },
     }));
   }
+  // A crash a test renders on purpose is written to the error log
+  // (src/lib/client-crash-report.ts, NB-42), and the checked-in .env names
+  // production: answered here, so no run writes a row to the owner's /errors.
+  if (url && url.includes("/rest/v1/rpc/log_error_telemetry")) {
+    return Promise.resolve(new Response("true", {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    }));
+  }
   // Every Terms line asks create-checkout once whether the EU/UK switch is on
   // (S11-142). The same narrow rule: answered "off", the switch's default.
   if (url && url.includes("/functions/v1/create-checkout") && (init?.method ?? "GET").toUpperCase() === "GET") {

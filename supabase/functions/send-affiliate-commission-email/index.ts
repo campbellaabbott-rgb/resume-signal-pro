@@ -6,7 +6,8 @@ import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "send-affiliate-commission-email.2026-10-09.2";
+// 2026-11-13.1 (bug round part B, the owner's S14X-085 answer of 2026-11-18, the 30-day hold): the mail says a commission is approved 30 days after the sale when it was not refunded, is not held for review and the address is confirmed, then requested from the dashboard at $25, instead of promising a monthly payout.
+const FN_BUILD = "send-affiliate-commission-email.2026-11-13.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -138,7 +139,7 @@ serve(async (req) => {
               Your referral code: <strong style="color: #111;">${escapeHtml(referralCode)}</strong>
             </p>
             <p style="color: #9ca3af; font-size: 12px; margin: 0;">
-              Commission is pending approval and will be paid out monthly.
+              This commission is approved 30 days after the sale if the sale is not refunded, it is not held for review and your email address is confirmed. When your approved commissions reach $25, request a payout from your dashboard.
             </p>
           </div>
         </body>

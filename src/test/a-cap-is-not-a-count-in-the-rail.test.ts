@@ -31,7 +31,7 @@ describe("a cap is not a count — in the rail either", () => {
   });
 
   it("a capped value is recognised by EQUALITY, never by >=", () => {
-    expect(JOBS).toMatch(/const fmtFacet = \(n: number\) => \(n === BOARD_COUNT_CAP \? `\$\{n\.toLocaleString\(\)\}\+` : n\.toLocaleString\(\)\);/);
+    expect(JOBS).toMatch(/const fmtFacet = \(n: number\) => \(n === BOARD_COUNT_CAP \? `\$\{fmtCount\(n\)\}\+` : fmtCount\(n\)\);/);
     expect(JOBS).not.toMatch(/n >= BOARD_COUNT_CAP/);
   });
 
@@ -55,6 +55,6 @@ describe("a cap is not a count — in the rail either", () => {
     expect(m, "the menu option's count and capped flag were not found side by side").toBeTruthy();
     expect(m![2], "the capped flag reads a different expression than the count").toBe(m![1]);
     expect(MULTI).toMatch(/count\?: number; capped\?: boolean/);
-    expect(MULTI).toMatch(/\{o\.count\.toLocaleString\(\)\}\{o\.capped \? "\+" : ""\}/);
+    expect(MULTI).toMatch(/\{fmtCount\(o\.count\)\}\{o\.capped \? "\+" : ""\}/);
   });
 });

@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Webhook, RefreshCw } from 'lucide-react';
 import { adminRpc } from '@/lib/admin-auth';
+import { PanelUnavailable, unavailableReason } from './PanelUnavailable';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -28,10 +29,15 @@ interface WebhookTrendChartProps {
 
 type TimeRange = '24h' | '7d';
 
+/** What a figure with nothing to measure prints. */
+const NO_VALUE = '\u2014';
+
 export function WebhookTrendChart({ className }: WebhookTrendChartProps) {
   const [timeRange, setTimeRange] = useState<TimeRange>('24h');
   const [data, setData] = useState<HourlyMetric[]>([]);
   const [loading, setLoading] = useState(true);
+  // Why the last read failed, or null once a read answers (S14X-156).
+  const [why, setWhy] = useState<string | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -48,7 +54,10 @@ export function WebhookTrendChart({ className }: WebhookTrendChartProps) {
       );
       
       setData(sorted);
+      setWhy(null);
     } catch (e) {
+      setData([]);
+      setWhy(unavailableReason(e));
       console.error('Failed to fetch webhook trends:', e);
     } finally {
       setLoading(false);
@@ -61,12 +70,14 @@ export function WebhookTrendChart({ className }: WebhookTrendChartProps) {
 
   const totalWebhooks = data.reduce((sum, d) => sum + d.total_webhooks, 0);
   const totalFailed = data.reduce((sum, d) => sum + d.failed_webhooks, 0);
-  const avgSuccessRate = totalWebhooks > 0 
-    ? ((totalWebhooks - totalFailed) / totalWebhooks * 100).toFixed(1) 
-    : '100.0';
+  // An empty window has no success rate: it printed 100.0% in green, the
+  // same as a perfect day (S14X-156).
+  const avgSuccessRate = totalWebhooks > 0
+    ? ((totalWebhooks - totalFailed) / totalWebhooks * 100).toFixed(1)
+    : null;
   const avgLatency = data.length > 0
     ? Math.round(data.reduce((sum, d) => sum + (d.avg_processing_time_ms || 0), 0) / data.length)
-    : 0;
+    : null;
 
   const formatXAxis = (value: string) => {
     const date = new Date(value);
@@ -137,6 +148,7 @@ export function WebhookTrendChart({ className }: WebhookTrendChartProps) {
       </CardHeader>
       
       <CardContent className="pt-0">
+        {why !== null ? <PanelUnavailable why={why} /> : (<>
         {/* Stats row */}
         <div className="flex items-center justify-between gap-2 mb-3 py-2 border-b border-border/50">
           <div className="flex items-center gap-4">
@@ -145,14 +157,14 @@ export function WebhookTrendChart({ className }: WebhookTrendChartProps) {
               <p className="text-[10px] text-muted-foreground uppercase">Events</p>
             </div>
             <div>
-              <p className={`text-xl font-bold tabular-nums ${parseFloat(avgSuccessRate) >= 95 ? 'text-green-500' : 'text-yellow-500'}`}>
-                {avgSuccessRate}%
+              <p className={`text-xl font-bold tabular-nums ${avgSuccessRate === null ? 'text-muted-foreground' : parseFloat(avgSuccessRate) >= 95 ? 'text-green-500' : 'text-yellow-500'}`}>
+                {avgSuccessRate === null ? NO_VALUE : `${avgSuccessRate}%`}
               </p>
               <p className="text-[10px] text-muted-foreground uppercase">Success</p>
             </div>
           </div>
           <div className="text-right">
-            <p className="text-xl font-bold tabular-nums">{avgLatency}ms</p>
+            <p className="text-xl font-bold tabular-nums">{avgLatency === null ? NO_VALUE : <>{avgLatency}ms</>}</p>
             <p className="text-[10px] text-muted-foreground uppercase">Avg Time</p>
           </div>
         </div>
@@ -206,6 +218,7 @@ export function WebhookTrendChart({ className }: WebhookTrendChartProps) {
             <p className="text-xs">No webhooks received</p>
           </div>
         )}
+        </>)}
       </CardContent>
     </Card>
   );

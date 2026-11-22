@@ -42,10 +42,26 @@ export default function Changelog() {
   // raw-key rendering is a bad outcome, but a skeleton that never resolves is
   // a worse one — it would hide the entire changelog behind a loading state
   // with nothing to break the tie.
-  const [stringsReady, setStringsReady] = useState(false);
-  useEffect(() => { void loadChangelogStrings().finally(() => setStringsReady(true)); }, []);
-
+  //
+  // KEYED ON THE INTERFACE LANGUAGE (S14X-179). The load used to run once, at
+  // mount, so a switch from the header's picker loaded the new language's
+  // main strings and never its release notes: every entry stayed in English
+  // until a reload. Each language now loads its own notes, and the list waits
+  // for the language it is showing; a slow load for a language the reader has
+  // already left cannot mark the current one ready. i18n.language, not
+  // resolvedLanguage, which stays on the old language until the new main
+  // bundle lands and would make the two fetches wait for each other. Not a
+  // languageChanged listener: the loader emits that event itself, so a
+  // listener that called it would call itself again.
   const { t, i18n } = useTranslation();
+  const lng = i18n.language;
+  const [readyLng, setReadyLng] = useState<string | null>(null);
+  useEffect(() => {
+    let current = true;
+    void loadChangelogStrings(lng).finally(() => { if (current) setReadyLng(lng); });
+    return () => { current = false; };
+  }, [lng]);
+  const stringsReady = readyLng === lng;
 
   return (
     <div className="min-h-screen bg-background">
@@ -62,7 +78,7 @@ export default function Changelog() {
 
           <div className="relative">
             <div className="absolute left-[7px] top-2 bottom-2 w-px bg-border" aria-hidden="true" />
-            <div className="space-y-10">
+            <div className="space-y-10" data-changelog-lng={stringsReady ? lng : undefined}>
               {!stringsReady && Array.from({ length: 6 }).map((_, i) => (
                 <div key={`skeleton-${i}`} className="relative pl-8" aria-hidden="true">
                   <div className="absolute left-0 top-1.5 w-3.5 h-3.5 rounded-full bg-muted border-2 border-background" />
@@ -75,7 +91,7 @@ export default function Changelog() {
               {stringsReady && changelog.map((entry, i) => (
                 <div key={i} className="relative pl-8">
                   <div className="absolute left-0 top-1.5 w-3.5 h-3.5 rounded-full bg-primary border-2 border-background ring-2 ring-primary/20" aria-hidden="true" />
-                  <p className="text-xs text-muted-foreground font-medium mb-1.5">{formatEntryDate(entry.date, i18n.language)}</p>
+                  <p className="text-xs text-muted-foreground font-medium mb-1.5">{formatEntryDate(entry.date, lng)}</p>
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <h2 className="text-lg font-bold text-foreground">{t(`changelogEntries.${entry.id}.title`)}</h2>
                     {entry.tags.map((tag) => {

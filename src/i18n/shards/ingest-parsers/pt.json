@@ -17,6 +17,8 @@
       "noTextDescription": "Se o seu currículo está dentro de uma imagem ou caixa de texto, cole o texto no lugar.",
       "docxGarbled": "Não dá para ler as letras deste documento",
       "docxGarbledDescription": "O texto saiu corrompido, geralmente por causa de uma fonte quebrada ou incorporada. Salve o documento de novo ou cole o texto do seu currículo.",
+      "txtUnreadable": "Este arquivo não tem texto que a gente consiga ler",
+      "txtUnreadableDescription": "Pode ser outro tipo de arquivo renomeado para .txt. Salve seu currículo de novo como texto simples, envie um PDF ou um .docx, ou cole o texto do seu currículo.",
       "webExport": "Este documento foi salvo como conteúdo da web",
       "webExportDescription": "Não conseguimos lê-lo diretamente. Abra no Word e use Arquivo > Salvar como > Documento do Word (.docx), ou cole o texto do seu currículo.",
       "rateLimited": "Muitos envios agora",

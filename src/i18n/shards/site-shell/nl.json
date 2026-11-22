@@ -1,5 +1,6 @@
 {
   "siteShell": {
+    "skipToMain": "Ga direct naar de hoofdinhoud",
     "crashHome": "Naar de homepage",
     "newVersion": {
       "loading": "De nieuwe versie wordt geladen…",

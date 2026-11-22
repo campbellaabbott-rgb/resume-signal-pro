@@ -72,6 +72,35 @@ const LONE_RIGHT_EXTRA = "+#&'-";
 /** One text, read once: spaces folded, a lower-case copy, and the two aligned. */
 type Prepared = { original: string; lower: string; aligned: string };
 
+// A WORD THE PAGE BROKE IS STILL THE WORD (S14X-280). A soft hyphen (U+00AD,
+// left by PDFs and word processors), a word joiner or a byte-order mark is
+// not there; a zero-width space inside a Latin word is web debris ("Py" +
+// U+200B + "thon"), and anywhere else the word break it was put there to be;
+// U+2010 to U+2012 are hyphens, so "C" + U+2011 + "suite" refuses "C" as
+// "C-suite" does. A soft hyphen at a line end joins the lines.
+const MARKS = /[­​‐-‒⁠﻿]/;
+function unmark(text: string): string {
+  if (!MARKS.test(text)) return text;
+  return text
+    .replace(/­(?:[^\S\r\n]*\r?\n[^\S\r\n]*)?|[⁠﻿]/g, '')
+    .replace(/(?<=\p{Script=Latin})​(?=\p{Script=Latin})/gu, '')
+    .replace(/​/g, ' ')
+    .replace(/[‐-‒]/g, '-');
+}
+
+// A word hyphenated at a line end ("manage-" / "ment") is read both ways:
+// joined ("management") and hyphenated ("cross-functional"). Which the writer
+// meant takes a dictionary; reading both only adds the word that was there.
+const LINE_END_HYPHEN = /(?<=\p{L})-[^\S\r\n]*\r?\n[^\S\r\n]*(?=\p{Ll})/u;
+const LINE_END_HYPHENS = /(?<=\p{L})-[^\S\r\n]*\r?\n[^\S\r\n]*(?=\p{Ll})/gu;
+
+/** The ways one text reads: one, or two where a line end broke a word. */
+function readingsOf(text: string): Prepared[] {
+  const clean = unmark(text);
+  if (!LINE_END_HYPHEN.test(clean)) return [prepare(clean)];
+  return [prepare(clean.replace(LINE_END_HYPHENS, '-')), prepare(clean.replace(LINE_END_HYPHENS, ''))];
+}
+
 function prepare(text: string): Prepared {
   // A line break inside a phrase ("machine\nlearning") is still the phrase.
   const original = text.replace(/\s+/g, ' ');
@@ -90,11 +119,11 @@ function prepare(text: string): Prepared {
 // The scanner asks about one résumé (and a handful of titles) many times in a
 // row; the last few texts are kept, never more.
 const PREPARED_LIMIT = 4;
-const preparedCache = new Map<string, Prepared>();
-function prepared(text: string): Prepared {
+const preparedCache = new Map<string, Prepared[]>();
+function prepared(text: string): Prepared[] {
   let p = preparedCache.get(text);
   if (p) return p;
-  p = prepare(text);
+  p = readingsOf(text);
   if (preparedCache.size >= PREPARED_LIMIT) preparedCache.delete(preparedCache.keys().next().value as string);
   preparedCache.set(text, p);
   return p;
@@ -200,7 +229,7 @@ function spacingForms(n: string): string[] {
  * read by resumeHasTerm.
  */
 export function termSpellings(term: string): string[] {
-  const n = term.toLowerCase().trim().replace(/\s+/g, ' ');
+  const n = unmark(term).toLowerCase().trim().replace(/\s+/g, ' ');
   if (!n) return [];
   const out = new Set<string>(spacingForms(n));
   for (const s of [...out]) for (const alt of SAME_SKILL_INDEX.get(s) ?? []) for (const f of spacingForms(alt)) out.add(f);
@@ -219,7 +248,9 @@ export function termSpellings(term: string): string[] {
  * singular is mostly a different word or sense on a résumé: an adjective
  * ("premium", "static", "special"), a common verb or noun ("cover", "draw",
  * "highlight", "filling", "source", "location"), a brand or product ("Canva",
- * "Epic", "Crown", "Teamwork"), or a street ("Lane").
+ * "Epic", "Crown", "Teamwork"), or a street ("Lane"). Never swapped means
+ * both ways: "security" is not found in "Securities and Exchange
+ * Commission" either (RC-OI-25).
  */
 const NO_INFLECT: ReadonlySet<string> = new Set([
   'futures', 'securities', 'derivatives', 'greeks', 'premiums', 'closings', 'comps', 'listings',
@@ -256,7 +287,7 @@ function inflections(s: string): Array<{ form: string; added: string }> {
   if (/(?:s|x|z|ch|sh)$/.test(s)) out.push({ form: `${s}es`, added: 'es' });
   else if (/[^aeiou]y$/.test(s)) out.push({ form: `${s.slice(0, -1)}ies`, added: 'ies' });
   else out.push({ form: `${s}s`, added: 's' });
-  return out;
+  return out.filter(({ form }) => !NO_INFLECT.has(form));
 }
 
 /**
@@ -313,10 +344,11 @@ function acronymSingular(term: string): string | null {
 
 /** True when the résumé carries `term` (or one of its spellings) as a token of its own. */
 export function resumeHasTerm(resumeText: string, term: string): boolean {
-  const p = prepared(resumeText);
-  if (termSpellings(term).some(s => hasToken(p, s) || hasInflection(p, s))) return true;
-  const singular = acronymSingular(term);
-  return singular !== null && findToken(p.lower, singular, LEFT_EXTRA, RIGHT_EXTRA, false);
+  const spellings = termSpellings(term);
+  const singular = acronymSingular(unmark(term));
+  return prepared(resumeText).some((p) =>
+    spellings.some(s => hasToken(p, s) || hasInflection(p, s))
+    || (singular !== null && findToken(p.lower, singular, LEFT_EXTRA, RIGHT_EXTRA, false)));
 }
 
 /**

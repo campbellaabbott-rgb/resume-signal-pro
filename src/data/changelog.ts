@@ -23,6 +23,13 @@ export interface ChangelogEntry {
 }
 
 export const changelog: ChangelogEntry[] = [
+  { id: "boardSearchesReadBothSpellingsAndListMoreEmployers", date: "2026-11-21", tags: ["new", "improved"] },
+  { id: "companyPagesSayWhenAFigureCountsAWholeHiringSystem", date: "2026-11-21", tags: ["fixed"] },
+  { id: "figuresDatesReleaseNotesAndSkipLinkFollowYourLanguage", date: "2026-11-21", tags: ["fixed", "improved"] },
+  { id: "aUnicodeTxtResumeIsReadWhereverYouUploadOne", date: "2026-11-21", tags: ["fixed"] },
+  { id: "affiliateBannersAreTheSizeTheirLabelsSay", date: "2026-11-21", tags: ["fixed"] },
+  { id: "addToClaudeOpensClaudesConnectorDialogFilledIn", date: "2026-11-19", tags: ["new", "improved"] },
+  { id: "ashbyApplicationFormsAreNoLongerReadOrAskedFor", date: "2026-11-19", tags: ["fixed"] },
   { id: "theBoardKeepsYourFiltersAndSaysWhyAJobHasNoFitScore", date: "2026-11-18", tags: ["fixed", "improved"] },
   { id: "aFreeScanThatFailsNoLongerCountsAgainstYourDay", date: "2026-11-18", tags: ["fixed", "improved"] },
   { id: "moreOfTheFreeScanIsInYourLanguageAndMoreFilesAreRead", date: "2026-11-18", tags: ["improved", "fixed"] },

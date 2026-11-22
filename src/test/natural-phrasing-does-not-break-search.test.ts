@@ -87,10 +87,11 @@ describe("natural job-search phrasing survives", () => {
     // the same join with each multi-word (quoted) term put back in its quotes
     // — see a-quoted-phrase-must-reach-the-search-engine. Still qt.terms, never
     // the raw string.
-    expect(FN).toMatch(/const qText = phraseText\(qt\.terms\)/);
+    // .103: the phrase text then joins compound role words (n1600); still qt.terms.
+    expect(FN).toMatch(/const qText = joinCompoundRoleWords\(phraseText\(qt\.terms\)/);
     // The count probe must ask the same question, or the total disagrees with
     // the results on screen.
-    expect(FN).toMatch(/const qTextC = phraseText\(qtC\.terms\)/);
+    expect(FN).toMatch(/const qTextC = joinCompoundRoleWords\(phraseText\(qtC\.terms\)/);
     // Both keep the raw-text fallback for an all-filler query — now guarded so
     // it does not fire when the query was only a pay figure.
     expect((FN.match(/liftedSalary \? "" : String\(body\.q \?\? ""\)\.trim\(\)\.slice\(0, 200\)/g) ?? []).length)

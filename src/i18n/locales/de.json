@@ -798,7 +798,7 @@
   },
   "scanProgress": {
     "title": "KI-Analyse läuft",
-    "subtitle": "Gemini Pro für maximale Genauigkeit",
+    "subtitle": "Der Lebenslauf wird Schritt für Schritt gelesen",
     "complete": "{{percent}}% abgeschlossen",
     "live": "Live",
     "securityNote": "Ihr Lebenslauf wird innerhalb von 7 Tagen gelöscht und nie verkauft",
@@ -3195,11 +3195,11 @@
     "crafting": "Personalisiertes Feedback wird erstellt..."
   },
   "aiGenerationProgress": {
-    "title": "GPT-5 arbeitet",
+    "title": "Die KI arbeitet",
     "generating": "{{productName}} wird generiert",
     "steps": {
       "analyzingTitle": "Lebenslauf wird analysiert",
-      "analyzingDesc": "GPT-5 liest deine Erfahrungen und Fähigkeiten",
+      "analyzingDesc": "Deine Erfahrungen und Fähigkeiten werden gelesen",
       "optimizingTitle": "ATS-Optimierung",
       "optimizingDesc": "Schlüsselwörter werden hinzugefügt und Formatierung verbessert",
       "generatingTitle": "Inhalt wird generiert",
@@ -3208,7 +3208,7 @@
       "finalizingDesc": "Qualitätsprüfung und Formatierung"
     },
     "complete": "{{progress}}% abgeschlossen",
-    "quality": "GPT-5 für maximale Qualität",
+    "quality": "Mit KI geschrieben",
     "secure": "Deine Daten werden sicher verarbeitet"
   },
   "atsDefenseResults": {
@@ -3509,7 +3509,7 @@
     "copied": "Kopiert",
     "error": "Generierungsfehler",
     "waiting": "Auf Inhalt warten...",
-    "gpt5Writing": "GPT-5 schreibt..."
+    "gpt5Writing": "Die KI schreibt..."
   },
   "notFound": {
     "code": "404",
@@ -5728,7 +5728,7 @@
     "startNewPurchase": "Kaufen Sie für eine andere Stelle? Neuen Kauf beginnen.",
     "boughtHereTitle": "3. Ihr Erfahrungsabschnitt – auf diesem Gerät bereits gekauft",
     "openYourLink": "Öffnen Sie den Link in Ihrer Kauf-E-Mail, um ihn anzusehen oder zu erstellen. Es wird Ihnen nichts erneut berechnet.",
-    "noLongerSoldBody": "Freelance Boost und Transition Pro werden nicht mehr verkauft und sind nicht Teil von Pro. Wenn Sie eines davon gekauft haben, öffnen Sie den Link in Ihrer Kauf-E-Mail: Er funktioniert noch 90 Tage. Ein kostenloses Konto schreibt jetzt jeden Tag einen angepassten Lebenslauf, ein Anschreiben und eine Gesprächsvorbereitung für eine Stelle.",
+    "noLongerSoldBody": "Freelance Boost und Transition Pro werden nicht mehr verkauft und sind nicht Teil von Pro. Wenn Sie eines davon gekauft haben, öffnen Sie den Link in Ihrer Kauf-E-Mail: Er funktioniert weiterhin. Ein kostenloses Konto schreibt jetzt jeden Tag einen angepassten Lebenslauf, ein Anschreiben und eine Gesprächsvorbereitung für eine Stelle.",
     "noLongerSoldMeta": "Freelance Boost und Transition Pro werden nicht mehr verkauft. Wenn Sie eines davon gekauft haben, funktioniert der Link in Ihrer Kauf-E-Mail weiterhin.",
     "noLongerSoldTitle": "Freelance Boost wird nicht mehr verkauft",
     "regenerate": "Neu erzeugen",
@@ -5938,7 +5938,7 @@
     "autoRenewTitle": "Bitte setzen Sie das Häkchen für die Verlängerung",
     "fairUseTitle": "Sie haben die Fair-Use-Grenze von Pro erreicht",
     "planUnpaidTitle": "Ihr Tarif ist noch nicht bezahlt",
-    "retiredBody": "Dieses Produkt wird nicht mehr verkauft, und es wurde nichts berechnet. Wenn Sie es früher gekauft haben, funktioniert Ihr Link noch 90 Tage.",
+    "retiredBody": "Dieses Produkt wird nicht mehr verkauft, und es wurde nichts berechnet. Wenn Sie es früher gekauft haben, funktioniert Ihr Link weiterhin.",
     "retiredTitle": "Nicht mehr erhältlich"
   },
   "consent": {

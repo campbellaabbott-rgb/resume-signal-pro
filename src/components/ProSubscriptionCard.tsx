@@ -13,6 +13,7 @@ import { PRO_PERK_ITEMS, proPerksOnSale, proSummaryOnSale } from "@/config/pro-p
 import { isOwingStatus } from "@/config/subscription-status";
 import { PurchaseTerms } from "@/components/PurchaseTerms";
 import { proOnSale } from "@/lib/purchases-open";
+import { date as fmtDate } from "@/lib/format";
 
 // What the plan includes lives in src/config/pro-perks.ts, where the pricing
 // guards read it without mounting this card.
@@ -64,7 +65,7 @@ export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) 
   const price = SUBSCRIPTIONS.pro.priceUsd;
   const owing = isOwingStatus(pro.status);
   const retiredPlan = pro.planTier === "agent";
-  const periodEnd = pro.currentPeriodEnd ? new Date(pro.currentPeriodEnd).toLocaleDateString() : null;
+  const periodEnd = pro.currentPeriodEnd ? fmtDate(pro.currentPeriodEnd) : null;
 
   const goPro = () => {
     if (!user) {

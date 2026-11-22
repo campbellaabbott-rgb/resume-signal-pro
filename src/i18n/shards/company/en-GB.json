@@ -17,6 +17,7 @@
       "copied": "Link copied",
       "copyLink": "Copy link",
       "more": "More actions for {{name}}",
+      "moreThis": "More actions for this board",
       "watchBoards": "Watch boards named “{{token}}”",
       "watchGeneric": "Watch the “{{label}}” board",
       "watchThis": "Watch this board"
@@ -59,6 +60,7 @@
     },
     "facts": {
       "countriesLabel": "Most roles in",
+      "countriesLabelPooled": "Most roles across the {{company}} hiring system in",
       "payLabel": "Pay stated on",
       "payValue": "{{k}} of {{n}}",
       "systemLabel": "Hiring system",
@@ -69,6 +71,8 @@
     "factsLabel": "About this board",
     "h1Generic": "Roles on the “{{label}}” board",
     "h1GenericSystem": "Roles on the “{{label}}” board ({{system}})",
+    "h1SystemBoard": "Roles on a {{system}} board",
+    "h1ThisBoard": "Roles on this board",
     "mix": {
       "basis": "The largest groups among the open roles we read on {{date}}; roles in no field we recognise are left out.",
       "basisUndated": "The largest groups among the open roles we read; roles in no field we recognise are left out.",
@@ -91,6 +95,8 @@
       "basis": "Yearly figures from the pay ranges their open postings state; postings that state no pay are not counted.",
       "floor_one": "Typical bottom of the stated pay range: {{amount}} · median across {{m}} {{currency}} posting",
       "floor_other": "Typical bottom of the stated pay range: {{amount}} · median across {{m}} {{currency}} postings",
+      "floorPooled_one": "Typical bottom of the stated pay range: {{amount}} · median across {{m}} {{currency}} posting on this employer's whole hiring system",
+      "floorPooled_other": "Typical bottom of the stated pay range: {{amount}} · median across {{m}} {{currency}} postings on this employer's whole hiring system",
       "read": "read {{date}}",
       "stated": "Pay stated on {{k}} of {{n}} postings",
       "title": "Pay"
@@ -182,6 +188,7 @@
     "undatedMore": "({{u}} more carry no date)",
     "boardTotal_one": "Their board listed {{total}} role in all when we read it {{ago}}.",
     "boardTotal_other": "Their board listed {{total}} roles in all when we read it {{ago}}.",
-    "pooledBoards": "Counted across {{n}} of this employer's hiring-system boards"
+    "pooledBoards": "Counted across {{n}} of this employer's hiring-system boards",
+    "employerChipOneBoard": "Hiring record for one of this employer's {{n}} boards: {{board}}"
   }
 }

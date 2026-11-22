@@ -1053,6 +1053,52 @@ interface GreenhouseJob {
   first_published?: string;
   updated_at?: string;
   departments?: Array<{ name?: string }>;
+  /** pay_transparency=true: the board's own stated ranges (S9-010). */
+  pay_input_ranges?: GreenhousePayRange[];
+}
+
+/** One range a Greenhouse board states: whole-cent figures, an ISO code, and the board's own label ("Hourly Rate:", "Zone 1 Pay Range"). */
+export interface GreenhousePayRange {
+  min_cents?: number;
+  max_cents?: number;
+  currency_type?: string;
+  title?: string;
+}
+
+/** ISO 4217 currencies with no minor unit, plus HUF, which Greenhouse stores in whole forints (Elastic's 15805300 is 15,805,300 Ft). */
+const ZERO_DECIMAL_CURRENCY = /^(?:JPY|KRW|VND|CLP|ISK|HUF|UGX|PYG|XOF|XAF|RWF|KMF|GNF|DJF|BIF|VUV|XPF)$/;
+/**
+ * The pay a Greenhouse board states (S9-010), through the one formatter whose
+ * output the parser reads back to the same figures. The first range that reads
+ * as a rate of pay: the order the posting itself lists its zones in, which is
+ * the range the description miner read before. A range whose top is more than
+ * five times its floor ("$311 — $325,000", a typo'd zone) is passed over, as the
+ * miner passes over such a range in prose. The period is the board's own label's
+ * word; a label with none ("Pay Range") states figures only, read as the miner's
+ * figures are read.
+ * Rationale: docs/job-board-index-notes.md#n1602-the-pay-a-greenhouse-board-states
+ */
+export function greenhouseSalary(ranges: readonly GreenhousePayRange[] | null | undefined, location = ""): string | null {
+  if (!Array.isArray(ranges)) return null;
+  // A board that labels each zone by its cities ("Zone 2 (Denver, CO; Westlake, TX)"): the range naming the
+  // posting's own city is read first, so a Westlake posting is not handed Zone 1's band.
+  const cities = location.split(/[;|/]/).map((p) => p.split(",")[0].trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).filter((c) => c.length >= 3 && !/^(?:remote|hybrid|anywhere|united states|usa)$/i.test(c));
+  const names = (r: GreenhousePayRange | null) => cities.some((c) => new RegExp(`(?<!\\p{L})${c}(?!\\p{L})`, "iu").test(String(r?.title ?? "")));
+  for (const r of cities.length ? [...ranges.filter(names), ...ranges.filter((x) => !names(x))] : ranges) {
+    if (!r || typeof r !== "object") continue;
+    const cur = String(r.currency_type ?? "").toUpperCase();
+    // A zero-decimal currency's "cents" are whole units (Duolingo's min_cents 17178000 JPY is ¥17,178,000).
+    const unit = ZERO_DECIMAL_CURRENCY.test(cur) ? 1 : 100;
+    const min = typeof r.min_cents === "number" && r.min_cents > 0 ? r.min_cents / unit : null;
+    const max = typeof r.max_cents === "number" && r.max_cents > 0 ? r.max_cents / unit : null;
+    if (min === null || (max !== null && (max < min || max / min > 5))) continue;
+    // "€32.000 – €33.000" typed into the pay form is stored as 32.00 - 33.00: a whole-euro range under
+    // 1,000 with no period on its label is a salary that lost its thousands, never an hourly wage.
+    if (cur === "EUR" && vendorPayPeriod(r.title) === null && (max ?? min) < 1_000 && Number.isInteger(min) && Number.isInteger(max ?? min)) continue;
+    const stated = statedPayText(vendorPayPeriod(r.title), min, max, r.currency_type ?? null, null);
+    if (stated !== null) return stated;
+  }
+  return null;
 }
 
 // Rationale: docs/job-board-index-notes.md#n994-const-coord_suffix-s-s-d-d
@@ -1104,7 +1150,7 @@ export function normalizeGreenhouse(raw: { jobs?: GreenhouseJob[] }, company: st
       // Rationale: docs/job-board-index-notes.md#n998-postedat-j-first_published-null
       postedAt: j.first_published ?? null,
       category: categorize(j.title ?? "", j.departments?.[0]?.name),
-      salary: null,
+      salary: greenhouseSalary(j.pay_input_ranges, location),
       applyUrl: safeUrl(indexUrl ? `https://${pageHost}/${pageToken}/jobs/${j.id}` : j.absolute_url),
     };
   }).filter((j) => j.applyUrl !== "");
@@ -1177,7 +1223,7 @@ const fmtStatedPay = (n: number) => n.toLocaleString("en-US", { minimumFractionD
 
 // Rationale: docs/job-board-index-notes.md#n1235-function-statedpaytext
 function statedPayText(
-  period: StatedPayPeriod,
+  period: StatedPayPeriod | null,
   min: number | null,
   max: number | null,
   currencyCode: string | null,
@@ -1191,9 +1237,10 @@ function statedPayText(
   const marker = /^[A-Z]{3}$/.test(code) ? `${code} ` : sym;
   if (!marker) return null;
   const figures = ceiling === null ? fmtStatedPay(min) : `${fmtStatedPay(min)} – ${fmtStatedPay(ceiling)}`;
-  const text = `${marker}${figures} ${STATED_PAY_PERIOD_WORD[period]}`;
+  // No period: the figures alone, read by the parser's magnitude rules (greenhouse "Pay Range").
+  const text = period === null ? `${marker}${figures}` : `${marker}${figures} ${STATED_PAY_PERIOD_WORD[period]}`;
   const read = parseSalaryStructured(text, null, null);
-  if (!read || read.period !== period || read.annualMin === null) return null;
+  if (!read || (period !== null && read.period !== period) || read.annualMin === null) return null;
   if (read.min !== min) return null;
   if (ceiling === null ? read.max !== null : read.max !== ceiling) return null;
   return text;

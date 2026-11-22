@@ -32,6 +32,8 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 import { SLOW } from "./helpers/mount-budget";
 import { FREE_USER, WRITING_STUBS, WritingWorld, loadWriter, post, tokenFor } from "./helpers/writing-harness";
+import { DEFAULT_MODELS } from "../../supabase/functions/_shared/ai-fallback";
+import { SCAN_MODEL_CHAIN } from "../../supabase/functions/_shared/scan-models";
 
 vi.setConfig({ testTimeout: 60_000, hookTimeout: 240_000 });
 
@@ -450,10 +452,12 @@ describe("test-ai-fallback: mode \"all\" answers inside the platform's limit wha
     quiet();
   });
 
-  it("every model hangs: all four are asked at once, and the report comes back in about 40 s, each model failed", async () => {
+  // Every model of both production chains (three since the scanner's chain
+  // lost the step the gateway never served, CW2-AI1; four before).
+  it("every model hangs: every model of both chains is asked at once, and the report comes back in about 40 s, each model failed", async () => {
     gateway.plan = () => "hang";
     const { result: r, at } = await drive(gateway, () => post(handler, "test-ai-fallback", { mode: "all" }, "service"));
-    expect(new Set(gateway.seen.map((s) => s.model)).size).toBe(4);
+    expect([...new Set(gateway.seen.map((s) => s.model))].sort()).toEqual([...new Set([...DEFAULT_MODELS, ...SCAN_MODEL_CHAIN])].sort());
     for (const s of gateway.seen) expect(s.at, s.model).toBe(0);
     expect(at).toBeLessThanOrEqual(45_000);
     expect(r.body).toMatchObject({ success: false, mode: "all" });

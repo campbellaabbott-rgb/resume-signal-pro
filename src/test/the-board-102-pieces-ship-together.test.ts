@@ -9,7 +9,9 @@
  * the lanes are merged and the ledger orders their migrations.
  *
  * 1. The high-water clamp equals the catalogue the bundle carries. A mark above it blocks
- *    the orphan prune for good; one below it lets a stale bundle prune live boards.
+ *    the orphan prune for good; one below it lets a stale bundle prune live boards. Since
+ *    .103 the clamp is applied and pinned to .102's 44,499; .103's own clamp tracks the
+ *    catalogue (the-board-103-high-water-follows-the-prune.test.ts).
  * 2. The Workable retry without details ships only with the three gig boards retired
  *    (OD1). The retry alone would start serving about 6-7k gig rows from boards that are
  *    dark today because their feeds are too big.
@@ -50,12 +52,16 @@ const clampsOf = (file: string) =>
     .matchAll(/LEAST\(\(v->>'size'\)::int,\s*(\d+)\)/g)].map((m) => Number(m[1]));
 
 describe("the board-102 lanes ship as one build", () => {
-  it("1. the catalogue high-water migration clamps to exactly the boards the bundle carries, and is the newest clamp", () => {
+  it("1. the catalogue high-water migration clamps to exactly the 44,499 boards .102 carried, and only .103's clamp follows it", () => {
+    // Applied with .102 (the ledger reads it applied), so it keeps the number it ran with. From .103 on the
+    // newest clamp tracks JOB_SOURCES.length: src/test/the-board-103-high-water-follows-the-prune.test.ts.
     const file = fileOf("20261111120000");
     expect(file, "no migration 20261111120000: nothing lowers the high-water after the retirements, so the orphan prune stays blocked").not.toBeNull();
-    expect(clampsOf(file!), `${file} must clamp the mark to JOB_SOURCES.length`).toEqual([JOB_SOURCES.length]);
-    const newest = MIGRATIONS.filter((f) => clampsOf(f).length > 0).pop();
-    expect(newest, "a later migration clamps the high-water again, so this clamp is not the one production keeps").toBe(file);
+    expect(clampsOf(file!), `${file} must clamp the mark to the 44,499 boards job-board .102 carried`).toEqual([44_499]);
+    const later = MIGRATIONS.filter((f) => f > file! && clampsOf(f).length > 0);
+    expect(later[0], "the next clamp after .102's is .103's prune clamp, and nothing between them moves the mark").toBe(
+      "20261117110000_the_catalogue_high_water_follows_the_dead_board_prune.sql",
+    );
   });
 
   it("2. the Workable retry without details ships only with the three gig boards retired", () => {

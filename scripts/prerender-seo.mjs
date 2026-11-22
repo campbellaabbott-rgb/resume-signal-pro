@@ -4469,7 +4469,7 @@ export { FREE_SCANS_PER_DAY as SCAN_FREE_PER_DAY, SIGNED_IN_SCANS_PER_DAY as SCA
       content: `
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Freelance Boost" }])}
         <h1 class="text-3xl font-bold mb-3">${esc(FB.noLongerSoldTitle || "Freelance Boost is no longer sold")}</h1>
-        <p class="text-muted-foreground mb-6">${esc(FB.noLongerSoldBody || "Freelance Boost and Transition Pro are no longer sold, and they are not part of Pro. If you bought one, open the link in your purchase email: it keeps working for 90 days.")}</p>
+        <p class="text-muted-foreground mb-6">${esc(FB.noLongerSoldBody || "Freelance Boost and Transition Pro are no longer sold, and they are not part of Pro. If you bought one, open the link in your purchase email: it keeps working. A free account now writes a tailored résumé, cover letter and interview prep for a job each day.")}</p>
         <p class="text-sm mb-8"><a href="/pricing" class="text-primary underline">${esc(FB.seePricing || "See what is on sale")}</a></p>
         <p class="text-sm text-muted-foreground mb-8">Related reading: <a href="/guides/freelance-work-on-resume" class="text-primary underline">how to put freelance work on your resume</a> and <a href="/guides/fractional-roles-on-resume" class="text-primary underline">how to put fractional roles on your resume</a>.</p>
         ${cta("Start with the free scan", "See how your resume reads today before changing anything — free, no signup.", "Scan my resume free")}`,

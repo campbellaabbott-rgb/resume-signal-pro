@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { SEO } from "@/components/seo/SEO";
 import { useScanTotals } from "@/hooks/use-scan-totals";
+import { count as fmtCount } from "@/lib/format";
 import {
   Shield, Lock, Clock, CloudOff, Users,
   CheckCircle2, BookOpen, FileCheck,
@@ -103,7 +104,7 @@ export default function Trust() {
   const totals = useScanTotals();
   const trustStats = [
     ...(totals
-      ? [{ value: totals.total_scans.toLocaleString(), label: t('trustPage.stats.resumesAnalyzed'), icon: FileCheck }]
+      ? [{ value: fmtCount(totals.total_scans), label: t('trustPage.stats.resumesAnalyzed'), icon: FileCheck }]
       : []),
   ];
 

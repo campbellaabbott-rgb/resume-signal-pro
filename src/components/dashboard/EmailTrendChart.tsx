@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Mail, RefreshCw } from 'lucide-react';
 import { adminRpc } from '@/lib/admin-auth';
+import { PanelUnavailable, unavailableReason } from './PanelUnavailable';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -27,10 +28,15 @@ interface EmailTrendChartProps {
 
 type TimeRange = '24h' | '7d';
 
+/** What a figure with nothing to measure prints. */
+const NO_VALUE = '\u2014';
+
 export function EmailTrendChart({ className }: EmailTrendChartProps) {
   const [timeRange, setTimeRange] = useState<TimeRange>('24h');
   const [data, setData] = useState<HourlyMetric[]>([]);
   const [loading, setLoading] = useState(true);
+  // Why the last read failed, or null once a read answers (S14X-156).
+  const [why, setWhy] = useState<string | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -47,7 +53,10 @@ export function EmailTrendChart({ className }: EmailTrendChartProps) {
       );
       
       setData(sorted);
+      setWhy(null);
     } catch (e) {
+      setData([]);
+      setWhy(unavailableReason(e));
       console.error('Failed to fetch email trends:', e);
     } finally {
       setLoading(false);
@@ -60,9 +69,11 @@ export function EmailTrendChart({ className }: EmailTrendChartProps) {
 
   const totalEmails = data.reduce((sum, d) => sum + d.total_emails, 0);
   const totalFailed = data.reduce((sum, d) => sum + d.failed_emails, 0);
-  const avgSuccessRate = totalEmails > 0 
-    ? ((totalEmails - totalFailed) / totalEmails * 100).toFixed(1) 
-    : '100.0';
+  // An empty window has no success rate: it printed 100.0% in green, the
+  // same as a perfect day (S14X-156).
+  const avgSuccessRate = totalEmails > 0
+    ? ((totalEmails - totalFailed) / totalEmails * 100).toFixed(1)
+    : null;
 
   const formatXAxis = (value: string) => {
     const date = new Date(value);
@@ -131,6 +142,7 @@ export function EmailTrendChart({ className }: EmailTrendChartProps) {
       </CardHeader>
       
       <CardContent className="pt-0">
+        {why !== null ? <PanelUnavailable why={why} /> : (<>
         {/* Stats row */}
         <div className="flex items-center justify-between gap-2 mb-3 py-2 border-b border-border/50">
           <div className="flex items-center gap-4">
@@ -139,8 +151,8 @@ export function EmailTrendChart({ className }: EmailTrendChartProps) {
               <p className="text-[10px] text-muted-foreground uppercase">Total</p>
             </div>
             <div>
-              <p className={`text-xl font-bold tabular-nums ${parseFloat(avgSuccessRate) >= 95 ? 'text-green-500' : 'text-yellow-500'}`}>
-                {avgSuccessRate}%
+              <p className={`text-xl font-bold tabular-nums ${avgSuccessRate === null ? 'text-muted-foreground' : parseFloat(avgSuccessRate) >= 95 ? 'text-green-500' : 'text-yellow-500'}`}>
+                {avgSuccessRate === null ? NO_VALUE : `${avgSuccessRate}%`}
               </p>
               <p className="text-[10px] text-muted-foreground uppercase">Success</p>
             </div>
@@ -202,6 +214,7 @@ export function EmailTrendChart({ className }: EmailTrendChartProps) {
             <p className="text-xs">No emails sent</p>
           </div>
         )}
+        </>)}
       </CardContent>
     </Card>
   );

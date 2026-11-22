@@ -28,8 +28,8 @@
 #     the EU, the EEA, the UK and India is not serving), and reports no closed
 #     shop (no purchasesOpen false: wave 4's seller gate is not serving);
 #   - create-product-checkout answers a purchase of each cut product with 410
-#     (retired, cut, the product, a sentence naming the 90 days a past buyer
-#     keeps, and no Stripe url), Freelance Boost and Transition Pro included,
+#     (retired, cut, the product, a sentence saying a past buyer's link
+#     still works, with no day count since S14X-143 pick B, and no Stripe url), Freelance Boost and Transition Pro included,
 #     and create-scan-pack-checkout and create-test-checkout answer 410 too;
 #   - the published Pricing page carries Pro's renewal box, and neither the
 #     purchases-open-soon line, nor the region note that hid Go Pro from the
@@ -106,7 +106,7 @@ let s="";process.stdin.on("data",(d)=>s+=d).on("end",()=>{
 for VD92_P in basicKeywordFix:basic_keyword_fix coverLetter:cover_letter premiumPackage:premium_package atsDefense:ats_defense \
   careerSnapshot:career_snapshot graduateGamePlan:graduate_gameplan interviewCoach:interview_coach careerPathSimulator:career_path_simulator scanPack:scan_pack \
   freelanceBoost:freelance_boost freelanceTransitionPro:freelance_transition_pro; do
-  vd92_cut create-product-checkout "{\"productId\":\"${VD92_P%%:*}\",\"language\":\"en\"}" "${VD92_P#*:}" "en" "90 days"
+  vd92_cut create-product-checkout "{\"productId\":\"${VD92_P%%:*}\",\"language\":\"en\"}" "${VD92_P#*:}" "en" "your link keeps working"
 done
 vd92_cut create-product-checkout '{"productId":"coverLetter","language":"de"}' cover_letter "en" "nicht mehr verkauft"
 vd92_cut create-scan-pack-checkout '{"creditAmount":10}' scan_pack "en" "no longer sold"

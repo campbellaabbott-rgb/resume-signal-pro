@@ -799,7 +799,7 @@
   },
   "scanProgress": {
     "title": "Analyse IA en cours",
-    "subtitle": "Gemini Pro pour une précision maximale",
+    "subtitle": "Lecture de votre CV, étape par étape",
     "complete": "{{percent}}% terminé",
     "live": "En direct",
     "securityNote": "Votre CV est supprimé sous 7 jours et jamais vendu",
@@ -3223,11 +3223,11 @@
     "crafting": "Génération de commentaires personnalisés..."
   },
   "aiGenerationProgress": {
-    "title": "GPT-5 travaille",
+    "title": "L'IA travaille",
     "generating": "Génération de {{productName}}",
     "steps": {
       "analyzingTitle": "Analyse du CV",
-      "analyzingDesc": "GPT-5 lit votre expérience et vos compétences",
+      "analyzingDesc": "Lecture de votre expérience et de vos compétences",
       "optimizingTitle": "Optimisation pour l'ATS",
       "optimizingDesc": "Ajout de mots-clés et amélioration du format",
       "generatingTitle": "Génération du contenu",
@@ -3236,7 +3236,7 @@
       "finalizingDesc": "Contrôles qualité et mise en forme"
     },
     "complete": "{{progress}}% terminé",
-    "quality": "Utilisation de GPT-5 pour une qualité maximale",
+    "quality": "Rédigé avec l'IA",
     "secure": "Vos données sont traitées en toute sécurité"
   },
   "atsDefenseResults": {
@@ -3543,7 +3543,7 @@
     "copied": "Copié",
     "error": "Erreur de génération",
     "waiting": "En attente de contenu...",
-    "gpt5Writing": "GPT-5 écrit..."
+    "gpt5Writing": "L'IA écrit..."
   },
   "notFound": {
     "code": "404",
@@ -5783,7 +5783,7 @@
     "startNewPurchase": "Vous achetez pour un autre poste ? Commencer un nouvel achat.",
     "boughtHereTitle": "3. Votre section expérience — déjà achetée sur cet appareil",
     "openYourLink": "Pour la voir ou la générer, ouvrez le lien de votre e-mail d'achat. Vous ne serez pas facturé une seconde fois.",
-    "noLongerSoldBody": "Freelance Boost et Transition Pro ne sont plus vendus et ne font pas partie de Pro. Si vous en avez acheté un, ouvrez le lien de votre e-mail d'achat : il fonctionne encore pendant 90 jours. Un compte gratuit rédige désormais chaque jour un CV adapté, une lettre de motivation et une préparation d'entretien pour une offre.",
+    "noLongerSoldBody": "Freelance Boost et Transition Pro ne sont plus vendus et ne font pas partie de Pro. Si vous en avez acheté un, ouvrez le lien de votre e-mail d'achat : il fonctionne toujours. Un compte gratuit rédige désormais chaque jour un CV adapté, une lettre de motivation et une préparation d'entretien pour une offre.",
     "noLongerSoldMeta": "Freelance Boost et Transition Pro ne sont plus vendus. Si vous en avez acheté un, le lien de votre e-mail d'achat fonctionne toujours.",
     "noLongerSoldTitle": "Freelance Boost n'est plus vendu",
     "regenerate": "Régénérer",
@@ -5993,7 +5993,7 @@
     "autoRenewTitle": "Veuillez cocher la case de renouvellement",
     "fairUseTitle": "Vous avez atteint la limite d'usage raisonnable de Pro",
     "planUnpaidTitle": "Votre formule n'est pas encore payée",
-    "retiredBody": "Ce produit n'est plus vendu, et rien n'a été facturé. Si vous l'avez acheté auparavant, votre lien fonctionne encore pendant 90 jours.",
+    "retiredBody": "Ce produit n'est plus vendu, et rien n'a été facturé. Si vous l'avez acheté auparavant, votre lien fonctionne toujours.",
     "retiredTitle": "N'est plus vendu"
   },
   "consent": {
