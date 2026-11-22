@@ -27,6 +27,7 @@
     "removeEntry": "Dit item verwijderen",
     "removeBullet": "Dit opsommingsteken verwijderen",
     "bullet": "Opsommingsteken {{num}}",
-    "dismiss": "Verbergen"
+    "dismiss": "Verbergen",
+    "removeTag": "{{tag}} verwijderen"
   }
 }

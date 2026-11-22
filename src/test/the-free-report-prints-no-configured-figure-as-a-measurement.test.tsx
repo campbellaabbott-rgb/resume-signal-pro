@@ -598,6 +598,10 @@ describe("a report whose scan answer carries every configured field", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     render(<MemoryRouter><FreeKeywordResults {...(props as any)} onReset={() => {}} /></MemoryRouter>);
     const text = document.body.textContent ?? "";
+    // The skills and timeline cards' headings are the reader's language now
+    // (S14X-057): this English render reads them from the shard.
+    const headings = (JSON.parse(read("src/i18n/shards/free-scan-page/en.json")) as { freeScanPage: { report: Record<string, string> } }).freeScanPage.report;
+    const literal = (s: string) => new RegExp(s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
     // The report rendered the cards this test is about.
     expect(text).toMatch(/Local standards: Germany/);
     expect(text).toMatch(/Market Intelligence/);
@@ -608,7 +612,7 @@ describe("a report whose scan answer carries every configured field", () => {
       /Avg bullets per role/i, /\b78%/, /\b55%/, /\b85%/, /70%\+/, /15-25%/,
       // The review of 2026-10-27.
       /Keyword Gap Heat Map/, /how often this keyword appears/i, /high demand/i, /Hot skills right now/i,
-      /Rising keywords in job postings/i, /declining in job postings/i, /Skills Freshness\s*\d/, /\d+-second/i, /\b6 seconds\b/i,
+      /Rising keywords in job postings/i, /declining in job postings/i, /Skills Freshness\s*\d/, new RegExp(`${literal(headings.skillsFreshness).source}\\s*\\d`), /\d+-second/i, /\b6 seconds\b/i,
       /flagged by many ATS/i, /recruiters like/i, /screening hundreds/i, /Survives the pile/i, /of the pile/i,
       /Recruiters will skip/i, /rescan should land near/i, /\$141,000/, /Below Market/i, /At Market/i, /Above Market/i,
       /invisible in recruiter searches/i, /hide you from searches/i,
@@ -618,7 +622,7 @@ describe("a report whose scan answer carries every configured field", () => {
     const nodes = textNodes();
     for (const label of ["Very common", "Common", "Occasional"]) expect(nodes, `a node reading "${label}"`).not.toContain(label);
     // The cards those checks are about rendered.
-    for (const card of [/Skills Freshness/, /Employment Timeline/, /First-Glance Screener/, /A Recruiter's First Read/, /Minute Fix Plan/, /What happens if you fix it/, /Your Score Potential/]) {
+    for (const card of [literal(headings.skillsFreshness), literal(headings.employmentTimeline), /First-Glance Screener/, /A Recruiter's First Read/, /Minute Fix Plan/, /What happens if you fix it/, /Your Score Potential/]) {
       expect(text, `the report rendered ${card}`).toMatch(card);
     }
     // The lists and the projections name their basis.

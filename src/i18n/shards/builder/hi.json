@@ -27,6 +27,7 @@
     "removeEntry": "यह प्रविष्टि हटाएँ",
     "removeBullet": "यह बुलेट हटाएँ",
     "bullet": "बुलेट {{num}}",
-    "dismiss": "बंद करें"
+    "dismiss": "बंद करें",
+    "removeTag": "{{tag}} हटाएँ"
   }
 }

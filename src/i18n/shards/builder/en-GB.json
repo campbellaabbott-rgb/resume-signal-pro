@@ -27,6 +27,7 @@
     "removeEntry": "Remove this entry",
     "removeBullet": "Remove this bullet",
     "bullet": "Bullet {{num}}",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "removeTag": "Remove {{tag}}"
   }
 }

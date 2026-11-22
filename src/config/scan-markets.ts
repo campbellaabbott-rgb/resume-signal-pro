@@ -44,6 +44,13 @@ const MARKETS: ReadonlyArray<readonly [string, string]> = [
   ["TR", "Turkey"],
   ["AE", "United Arab Emirates"],
   ["SA", "Saudi Arabia (GCC)"],
+  // The wider GCC, which the standards file adds by a loop over Saudi
+  // Arabia's entry rather than as literal keys (S14X-032): the Kuwait,
+  // Qatar, Bahrain and Oman pages link their own market too.
+  ["KW", "Kuwait (GCC)"],
+  ["QA", "Qatar (GCC)"],
+  ["BH", "Bahrain (GCC)"],
+  ["OM", "Oman (GCC)"],
   ["IL", "Israel"],
   ["EG", "Egypt"],
   ["ZA", "South Africa"],

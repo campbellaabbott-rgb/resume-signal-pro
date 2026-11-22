@@ -43,6 +43,11 @@ interface PersonalizedInsightsProps {
   className?: string;
   // New props for enhanced personalization
   detectedSkills?: string[];
+  /**
+   * The page bounds of the market the scan used (its country standard's
+   * pagesMin and pagesMax). The length tip is said from these, or not at all.
+   */
+  pageRange?: { min: number; max: number } | null;
 }
 
 export function PersonalizedInsights({
@@ -53,6 +58,7 @@ export function PersonalizedInsights({
   currentRole,
   className,
   detectedSkills = [],
+  pageRange = null,
 }: PersonalizedInsightsProps) {
   const { t } = useTranslation();
   const industryConfig = getIndustryAdvice(industry);
@@ -66,6 +72,14 @@ export function PersonalizedInsights({
     hasJobDescription
   );
   
+  const bounds = pageRange && Number.isInteger(pageRange.min) && Number.isInteger(pageRange.max)
+    && pageRange.min > 0 && pageRange.max >= pageRange.min ? pageRange : null;
+  const lengthTip = bounds
+    ? bounds.min === bounds.max
+      ? t('freeScanPage.insights.lengthExact', { count: bounds.min })
+      : t('freeScanPage.insights.lengthRange', { min: bounds.min, max: bounds.max })
+    : null;
+
   const levelLabel = {
     entry: t('personalizedInsights.levels.entry'),
     mid: t('personalizedInsights.levels.mid'),
@@ -395,15 +409,19 @@ export function PersonalizedInsights({
         )}
       </div>
 
-      {/* Resume Length Recommendation */}
-      <div className="p-3 rounded-lg bg-muted/50 border border-border/50">
-        <div className="flex items-center gap-2 text-sm">
-          <TrendingUp className="w-4 h-4 text-primary" />
-          <span className="text-muted-foreground">
-            {t('personalizedInsights.recommendedLength', { count: expConfig.resumeLengthPages, level: levelLabel.toLowerCase() })}
-          </span>
+      {/* RESUME LENGTH, FROM THE MARKET'S STANDARD (S10-148). The level's own
+          page count (one page below senior) sat under a country card that
+          says two pages are standard in the UK, Germany and most of Europe.
+          The tip now gives the standard's own range, and without one it is
+          not given. */}
+      {lengthTip && (
+        <div data-length-tip className="p-3 rounded-lg bg-muted/50 border border-border/50">
+          <div className="flex items-center gap-2 text-sm">
+            <TrendingUp className="w-4 h-4 text-primary" />
+            <span className="text-muted-foreground">{lengthTip}</span>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

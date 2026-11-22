@@ -28,6 +28,7 @@
     "removeEntry": "Remover esta entrada",
     "removeBullet": "Remover este tópico",
     "bullet": "Tópico {{num}}",
-    "dismiss": "Ocultar"
+    "dismiss": "Ocultar",
+    "removeTag": "Remover {{tag}}"
   }
 }

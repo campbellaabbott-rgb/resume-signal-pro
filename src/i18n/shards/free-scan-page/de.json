@@ -2,7 +2,12 @@
   "freeScanPage": {
     "a11y": {
       "resumeText": "Text deines Lebenslaufs",
-      "emailAddress": "Deine E-Mail-Adresse"
+      "emailAddress": "Deine E-Mail-Adresse",
+      "closeIndustryList": "Liste der Branchen schließen",
+      "removeJob": "Ausgewählte Stelle entfernen",
+      "removeSpreadsheet": "Diese Tabelle entfernen",
+      "clearPosting": "Stellenanzeige leeren",
+      "removeProfilePdf": "Dieses Profil-PDF entfernen"
     },
     "jobUrl": {
       "truncated": "Diese Stellenanzeige war länger, als wir lesen können, daher steht nur ihr erster Teil im Feld."
@@ -170,7 +175,19 @@
       "levelDense": "Dicht",
       "levelModerate": "Mittel",
       "levelSparse": "Dünn",
-      "learnAbout": "Mehr zu {{title}}"
+      "learnAbout": "Mehr zu {{title}}",
+      "section": {
+        "contact": "Kontaktdaten",
+        "summary": "Profil",
+        "experience": "Berufserfahrung",
+        "education": "Ausbildung",
+        "skills": "Kenntnisse"
+      },
+      "contact": {
+        "email": "eine E-Mail-Adresse",
+        "phone": "eine Telefonnummer",
+        "linkedIn": "ein LinkedIn-Profil"
+      }
     },
     "keywordImpact": {
       "critical": "Pflicht",
@@ -222,7 +239,17 @@
     },
     "report": {
       "scoreBand": "Der Score {{score}} liegt in einem Modellbereich von {{low}}–{{high}}. Der Bereich reicht von unserer regelbasierten Berechnung bis zur KI-Schätzung: eine einzige exakte Zahl würde mehr Genauigkeit behaupten, als es gibt.",
-      "preparing": "Dein Bericht wird vorbereitet…"
+      "preparing": "Dein Bericht wird vorbereitet…",
+      "skillsFreshness": "Wie aktuell deine Kenntnisse sind",
+      "careerTrajectory": "Dein beruflicher Werdegang",
+      "levelKeywords": "Erwartete Schlüsselwörter für deine Stufe",
+      "employmentTimeline": "Zeitleiste deiner Berufserfahrung",
+      "gapFound": "Eine Lücke zwischen zwei Stellen",
+      "breakdown": "Woraus sich die Punktzahl zusammensetzt",
+      "breakdownKeywords": "Schlüsselwörter",
+      "breakdownFormat": "Format",
+      "breakdownQuantification": "Zahlen in deinen Aufzählungspunkten",
+      "estImpact": "Geschätzte Wirkung: {{impact}}"
     },
     "market": {
       "title": "Marktinformationen: {{country}}",
@@ -299,6 +326,31 @@
         "garbled": "unleserliche Zeichen",
         "noSections": "keine Standardabschnitte eines Lebenslaufs"
       }
+    },
+    "fallback": {
+      "automated_review_only": "Nur automatische Formatprüfung: Die KI-Prüfung war für diesen Scan nicht verfügbar.",
+      "duty_not_result": "Ein Aufzählungspunkt nennt eine Aufgabe, kein Ergebnis",
+      "add_numbers": "Ergänze Zahlen in den Aufzählungspunkten ohne Zahlen: So hebst du die Punktzahl am schnellsten",
+      "rewrite_passive_openers": "Formuliere die Aufzählungspunkte um, die mit einer passiven Wendung beginnen",
+      "number_top_three": "Ergänze in jedem deiner drei wichtigsten Aufzählungspunkte eine konkrete Zahl",
+      "numberTopThreeWhy": "Ein messbares Ergebnis gehört zu dem, worauf Personaler am stärksten achten",
+      "numberTopThreeImpact": "+5 bis 8 Punkte",
+      "startsWith": "beginnt mit „{{opener}}“"
+    },
+    "insights": {
+      "lengthExact_one": "Empfohlene Länge des Lebenslaufs für diesen Markt: {{count}} Seite",
+      "lengthExact_other": "Empfohlene Länge des Lebenslaufs für diesen Markt: {{count}} Seiten",
+      "lengthRange": "Empfohlene Länge des Lebenslaufs für diesen Markt: {{min}} bis {{max}} Seiten"
+    },
+    "partial": {
+      "noPostingComparison": "Er wurde nicht mit der Stellenanzeige verglichen, die du hinzugefügt hast: Scanne erneut, um ihn mit der Anzeige abzugleichen."
+    },
+    "since": {
+      "title": "Seit deinem letzten Scan: {{before}} → {{after}}",
+      "flags": "Warnsignale {{before}} → {{after}}.",
+      "up": "Höher als beim letzten Mal. Die Befunde unten erklären jeden Punkt.",
+      "down": "Niedriger als beim letzten Mal, oft wegen eines anderen Ziels oder gekürzter Inhalte. Die Befunde unten erklären jeden Punkt.",
+      "same": "Die Punktzahl ist unverändert. Die Befunde unten zeigen, was sie bewegen würde."
     }
   }
 }

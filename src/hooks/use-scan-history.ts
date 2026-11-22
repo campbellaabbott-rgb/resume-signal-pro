@@ -158,6 +158,44 @@ export function generateChecklist(analysisData: {
   return items;
 }
 
+/**
+ * The history as stored, with entries past the expiry left out and the best
+ * scores recounted from the rest; null when nothing is stored or it cannot be
+ * read. `dropped` says whether any entry was past the expiry.
+ */
+function readStoredHistory(): { history: ScanHistory; dropped: boolean } | null {
+  const stored = localStorage.getItem(STORAGE_KEY);
+  if (!stored) return null;
+  const parsed = JSON.parse(stored) as ScanHistory;
+  if (!parsed || !Array.isArray(parsed.entries)) return null;
+
+  // Filter out entries older than expiry
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - HISTORY_EXPIRY_DAYS);
+
+  const validEntries = parsed.entries.filter(entry => {
+    const entryDate = new Date(entry.timestamp);
+    return entryDate > cutoffDate;
+  });
+
+  // Recalculate best scores
+  let bestAts = parsed.bestAtsScore;
+  let bestFormat = parsed.bestFormatGrade;
+
+  if (validEntries.length > 0) {
+    bestAts = Math.max(...validEntries.map(e => e.atsScore));
+    bestFormat = validEntries.reduce((best, e) => {
+      if (!best) return e.formatGrade;
+      return gradeRank(e.formatGrade) > gradeRank(best) ? e.formatGrade : best;
+    }, null as string | null);
+  }
+
+  return {
+    history: { ...defaultHistory, ...parsed, entries: validEntries, bestAtsScore: bestAts, bestFormatGrade: bestFormat },
+    dropped: validEntries.length !== parsed.entries.length,
+  };
+}
+
 export const useScanHistory = () => {
   const [history, setHistory] = useState<ScanHistory>(defaultHistory);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -165,50 +203,33 @@ export const useScanHistory = () => {
   // Load history from storage on mount
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored) as ScanHistory;
-        
-        // Filter out entries older than expiry
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - HISTORY_EXPIRY_DAYS);
-        
-        const validEntries = parsed.entries.filter(entry => {
-          const entryDate = new Date(entry.timestamp);
-          return entryDate > cutoffDate;
-        });
-        
-        // Recalculate best scores
-        let bestAts = parsed.bestAtsScore;
-        let bestFormat = parsed.bestFormatGrade;
-        
-        if (validEntries.length > 0) {
-          bestAts = Math.max(...validEntries.map(e => e.atsScore));
-          bestFormat = validEntries.reduce((best, e) => {
-            if (!best) return e.formatGrade;
-            return gradeRank(e.formatGrade) > gradeRank(best) ? e.formatGrade : best;
-          }, null as string | null);
-        }
-        
-        const updatedHistory: ScanHistory = {
-          ...parsed,
-          entries: validEntries,
-          bestAtsScore: bestAts,
-          bestFormatGrade: bestFormat,
-        };
-        
-        setHistory(updatedHistory);
-        
+      const read = readStoredHistory();
+      if (read) {
+        setHistory(read.history);
         // Save cleaned history back
-        if (validEntries.length !== parsed.entries.length) {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedHistory));
-        }
+        if (read.dropped) localStorage.setItem(STORAGE_KEY, JSON.stringify(read.history));
       }
     } catch (e) {
       console.warn('[ScanHistory] Failed to load history:', e);
     }
     setIsLoaded(true);
   }, []);
+
+  // EVERY WRITE STARTS FROM WHAT IS STORED (S10-056). The report records its
+  // scan in an effect on its first render, before the load above has reached
+  // this hook's state: built on that empty state, the write replaced every
+  // earlier scan in the browser with this one, so a returning reader's
+  // "since your last scan" and score trend never had a last scan. The same
+  // held for a checklist tick or an email set before the load landed. Each
+  // write now reads the stored history inside the call, and falls back to
+  // the state only when storage cannot be read.
+  const currentHistory = useCallback((): ScanHistory => {
+    try {
+      return readStoredHistory()?.history ?? history;
+    } catch {
+      return history;
+    }
+  }, [history]);
 
   // Save history to storage
   const saveHistory = useCallback((newHistory: ScanHistory) => {
@@ -220,32 +241,39 @@ export const useScanHistory = () => {
     }
   }, []);
 
-  // Check if this is a duplicate scan (same resume within 5 minutes)
-  const isDuplicateScan = useCallback((resumeHash: string): boolean => {
-    if (history.entries.length === 0) return false;
-    
+  // The same scan recorded twice: the same whole résumé with the same score,
+  // within five minutes (a remount of the report). Now that a write sees the
+  // stored scans, a second scan of the same résumé against a posting, or
+  // after an edit past its first 500 characters, is a scan of its own.
+  const findDuplicateScan = (
+    entries: ScanHistoryEntry[],
+    resumeHash: string,
+    fingerprint: string | undefined,
+    atsScore: number,
+  ): ScanHistoryEntry | undefined => {
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-    
-    return history.entries.some(entry => {
-      if (entry.resumeHash !== resumeHash) return false;
-      const entryTime = new Date(entry.timestamp);
-      return entryTime > fiveMinutesAgo;
-    });
-  }, [history.entries]);
+    return entries.find(entry =>
+      entry.resumeHash === resumeHash &&
+      (entry.resumeFingerprint ?? null) === (fingerprint ?? null) &&
+      entry.atsScore === atsScore &&
+      new Date(entry.timestamp) > fiveMinutesAgo);
+  };
 
   // Add a new scan entry
   const addScanEntry = useCallback((
     entry: Omit<ScanHistoryEntry, 'id' | 'timestamp'>,
     resumeText?: string
   ) => {
+    const history = currentHistory();
     const resumeHash = resumeText ? generateResumeHash(resumeText) : undefined;
-    
+    const fingerprint = resumeText ? resumeFingerprint(resumeText) : undefined;
+
     // Check for duplicate
-    if (resumeHash && isDuplicateScan(resumeHash)) {
+    const existing = resumeHash ? findDuplicateScan(history.entries, resumeHash, fingerprint, entry.atsScore) : undefined;
+    if (existing) {
       console.log('[ScanHistory] Duplicate scan detected, skipping');
       // Return the existing entry instead
-      const existing = history.entries.find(e => e.resumeHash === resumeHash);
-      if (existing) return existing;
+      return existing;
     }
     
     const newEntry: ScanHistoryEntry = {
@@ -253,7 +281,7 @@ export const useScanHistory = () => {
       id: `scan_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       timestamp: new Date().toISOString(),
       resumeHash,
-      ...(resumeText ? { resumeFingerprint: resumeFingerprint(resumeText) } : {}),
+      ...(fingerprint ? { resumeFingerprint: fingerprint } : {}),
       checklistCompletedCount: 0,
     };
 
@@ -284,10 +312,11 @@ export const useScanHistory = () => {
     });
     
     return newEntry;
-  }, [history, saveHistory, isDuplicateScan]);
+  }, [currentHistory, saveHistory]);
 
   // Update checklist for a specific entry
   const updateChecklist = useCallback((entryId: string, itemId: string, completed: boolean) => {
+    const history = currentHistory();
     const entryIndex = history.entries.findIndex(e => e.id === entryId);
     if (entryIndex === -1) return;
     
@@ -314,16 +343,16 @@ export const useScanHistory = () => {
     
     saveHistory(newHistory);
     console.log('[ScanHistory] Updated checklist', { entryId, itemId, completed });
-  }, [history, saveHistory]);
+  }, [currentHistory, saveHistory]);
 
   // Associate email with history
   const setUserEmail = useCallback((email: string) => {
     const newHistory: ScanHistory = {
-      ...history,
+      ...currentHistory(),
       email,
     };
     saveHistory(newHistory);
-  }, [history, saveHistory]);
+  }, [currentHistory, saveHistory]);
 
   // Clear history
   const clearHistory = useCallback(() => {

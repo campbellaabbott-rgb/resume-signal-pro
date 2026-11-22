@@ -2,20 +2,23 @@
  * A COUNTRY PAGE OPENS THE SCAN ON ITS OWN MARKET (S14X-032).
  *
  * The CV standards pages cover every market the scanner keeps standards for
- * (COUNTRY_STANDARDS, 52 of them), and each page's "check my CV" button
+ * (COUNTRY_STANDARDS, 56 of them), and each page's "check my CV" button
  * opened the scanner with no market, whose "Applying in" select offered 24
  * hand-picked countries. A reader from the Japan page had to find Japan
  * again, and a reader from the Peru, Kenya or Vietnam page could not pick
  * their market at all. Now the select offers every market the scanner has
  * standards for, named in the reader's language, the country pages link with
  * ?market=<ISO>, and the page reads it (an unknown code leaves auto-detect).
+ *
+ * The standards' ISO set is read from COUNTRY_STANDARDS itself, not matched
+ * in its source: Kuwait, Qatar, Bahrain and Oman are added there by a loop,
+ * and a match on literal keys could not see them, so their pages linked a
+ * market the select did not offer (S14X-032 recheck).
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
 
 vi.setConfig(MOUNT_TEST_BUDGET);
@@ -62,13 +65,12 @@ if (!(globalThis as { IntersectionObserver?: unknown }).IntersectionObserver) {
 import Index from "@/pages/Index";
 import CvStandards from "@/pages/CvStandards";
 import { SCANNER_QUERY_PARAMS } from "@/lib/scanner-address";
+import { COUNTRY_STANDARDS } from "../../supabase/functions/free-keyword-scan/country-standards";
 
 afterEach(() => { cleanup(); });
 
-const ROOT = resolve(__dirname, "../..");
-/** The ISO keys of the scanner's standards, read from its source. */
-const standardsKeys = () => [...readFileSync(resolve(ROOT, "supabase/functions/free-keyword-scan/country-standards.ts"), "utf8")
-  .matchAll(/^ {2}([A-Z]{2}): \{/gm)].map((m) => m[1]);
+/** The ISO keys of the scanner's standards, every one the module holds. */
+const standardsKeys = () => Object.keys(COUNTRY_STANDARDS);
 /** The list module, or null where it does not exist. */
 const markets = async () => {
   try { return await import("@/config/scan-markets"); } catch { return null; }
@@ -78,8 +80,13 @@ describe("the select offers every market the scanner keeps standards for", () =>
   it("the market list is the standards' ISO set", async () => {
     const m = await markets();
     expect(m, "no market list").not.toBeNull();
-    expect(standardsKeys().length).toBe(52);
+    expect(standardsKeys().length).toBe(56);
     expect(m!.SCAN_MARKETS.map((x) => x.iso).sort()).toEqual(standardsKeys().sort());
+  });
+
+  it("the wider GCC's four markets are offered, so the Kuwait page opens on Kuwait", async () => {
+    const m = await markets();
+    for (const iso of ["KW", "QA", "BH", "OM"]) expect(m!.scanMarketFor(iso), iso).toBe(iso);
   });
 
   it("names each market in the reader's language", async () => {
@@ -108,10 +115,15 @@ async function selectAt(entry: string): Promise<HTMLSelectElement> {
 }
 
 describe("the scanner reads ?market=", () => {
-  it("/resume-checker?market=JP opens with Japan chosen among all 52 markets", async () => {
+  it("/resume-checker?market=JP opens with Japan chosen among all 56 markets", async () => {
     const select = await selectAt("/resume-checker?market=JP");
     await waitFor(() => expect(select.value).toBe("JP"), SLOW);
-    expect(select.querySelectorAll('option:not([value=""])').length).toBe(52);
+    expect(select.querySelectorAll('option:not([value=""])').length).toBe(56);
+  });
+
+  it("/resume-checker?market=KW opens with Kuwait chosen", async () => {
+    const select = await selectAt("/resume-checker?market=KW");
+    await waitFor(() => expect(select.value).toBe("KW"), SLOW);
   });
 
   it("an unknown code leaves auto-detect", async () => {

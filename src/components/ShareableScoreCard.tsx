@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { postTrackEvent } from "@/lib/track-transport";
 import { TRADING_NAME } from "@/config/seller";
 import { scoreBand, scoreTone } from "@/lib/score-bands";
+import { scanIndustryLabel } from "@/config/scan-industries";
 
 /**
  * Where a shared card sends people: this site's scanner. The card used to say
@@ -319,7 +320,8 @@ export function ShareableScoreCard({
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "24px" }}>
         <div style={{ padding: "16px", borderRadius: "12px", background: "rgba(255,255,255,0.05)" }}>
           <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "12px", marginBottom: "4px" }}>{t('shareableCard.industry')}</p>
-          <p style={{ color: "#fff", fontWeight: "600", margin: 0 }}>{industry}</p>
+          {/* The industry in the reader's words, never its id (SCAN-07). */}
+          <p data-share-industry style={{ color: "#fff", fontWeight: "600", margin: 0 }}>{scanIndustryLabel(industry, t)}</p>
         </div>
         <div style={{ padding: "16px", borderRadius: "12px", background: "rgba(255,255,255,0.05)" }}>
           <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "12px", marginBottom: "4px" }}>{t('shareableCard.experience')}</p>
