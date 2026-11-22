@@ -51,7 +51,10 @@ describe("for you ranked a page that cannot be scored", () => {
   it("retrieval never overwrites an intent the reader already stated", () => {
     // A typed query or an employer lander is a narrower ask than "my résumé";
     // fit ranking still applies on top of whichever they chose.
-    expect(JOBS).toMatch(/if \(terms\.length > 0 && !q\.trim\(\) && !company && !landerCompany\) \{/);
+    // Re-pointed 2026-11-21 (S10-067): the box is read as it is NOW, through
+    // the ref written on every render; the render's own q was the empty box
+    // the call began under, and a query typed meanwhile was typed over.
+    expect(JOBS).toMatch(/if \(terms\.length > 0 && !qRef\.current\.trim\(\) && !company && !landerCompany\) \{/);
     // The gap opens before setQ, or the fit effect scores the stale page first.
     expect(JOBS).toMatch(/fitAwaitingPage\.current = true;\s*\n?\s*setQ\(terms\[0\]\);/);
   });
@@ -76,7 +79,11 @@ describe("for you ranked a page that cannot be scored", () => {
     }
     // And the fit effect must wait for that page rather than spending a scoring
     // call on the recency page still on screen.
-    expect(JOBS).toMatch(/if \(!searched && !q\.trim\(\) && !company && !landerCompany\) fitAwaitingPage\.current = true;/);
+    // Re-pointed 2026-11-21 (MATCH-12, S10-067): one helper for every door
+    // that switches ranking on, read from the refs, and only when the switch
+    // is really happening (a wait nothing closes would stop scoring for good).
+    expect(JOBS).toMatch(/if \(!fitRankingRef\.current && !searched && !qRef\.current\.trim\(\) && !company && !landerCompany\) fitAwaitingPage\.current = true;/);
+    expect((JOBS.match(/awaitFitPage\(searched\);\s*setFitRanking\(true\);/g) ?? []).length, "the drop, the button and the arrival each wait for the page").toBe(3);
   });
 
   it("hasDescription is a requirement of the mode, not a filter the reader set", () => {

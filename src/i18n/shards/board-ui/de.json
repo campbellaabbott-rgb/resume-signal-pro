@@ -24,6 +24,12 @@
     "unscoredResumeTerms": "Nicht bewertet — in Ihrem Lebenslauf haben wir keine Fähigkeit und kein Werkzeug erkannt",
     "unscoredResumeTermsBody": "Die Bewertung liest nur englische Schlüsselwörter und hat in Ihrem Lebenslauf keines gefunden, also gab es nichts, womit sie diese Anzeige vergleichen konnte. Hier gibt es keinen Prozentwert; das ist das Fehlen einer Messung, keine schwache Messung.",
     "unscoredResumeTermsTip": "Nicht bewertet: Die Bewertung hat in Ihrem Lebenslauf keine Fähigkeit und kein Werkzeug erkannt (sie liest nur englische Schlüsselwörter), also gab es nichts zu vergleichen. Das ist keine niedrige Bewertung — es ist gar keine.",
-    "matchesNoneForRole": "Wir haben gerade keine offenen Stellen für {{role}} gefunden, deshalb sind das Stellen in deinem Fachgebiet — mit deinem Lebenslauf bewertet, nicht durch ihn gefunden."
+    "matchesNoneForRole": "Wir haben gerade keine offenen Stellen für {{role}} gefunden, deshalb sind das Stellen in deinem Fachgebiet — mit deinem Lebenslauf bewertet, nicht durch ihn gefunden.",
+    "loadMoreTooDeep": "Weiter nach unten blättert das Board in dieser Liste nicht. Grenze sie mit einer Stellenbezeichnung, einem Ort oder einem Fachgebiet ein, um die Stellen darunter zu erreichen.",
+    "orderFitNoResumeTerms": "nicht sortiert — in deinem Lebenslauf haben wir keine Fähigkeit und kein Werkzeug erkannt, also gab es nichts, womit sich diese Anzeigen bewerten ließen. Die Bewertung liest nur englische Schlüsselwörter.",
+    "orderFitScoring": "diese Anzeigen werden mit deinem Lebenslauf abgeglichen…",
+    "orderFitLimited": "noch nicht sortiert — das Kontingent für Passungsbewertungen ist vorerst aufgebraucht, daher wurden diese Anzeigen nicht bewertet.",
+    "orderFitFailed": "nicht sortiert — die Bewertung hat für diese Anzeigen gerade nicht geantwortet.",
+    "orderFitUnreadable": "nicht sortiert — die Bewertung konnte diese Anzeigen nicht lesen: Sie liest nur englische Schlüsselwörter und hat in den Beschreibungen, die wir haben, keine Fähigkeit und kein Werkzeug erkannt."
   }
 }

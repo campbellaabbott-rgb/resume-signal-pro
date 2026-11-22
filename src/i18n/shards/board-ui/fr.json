@@ -24,6 +24,12 @@
     "unscoredResumeTerms": "Non évaluée — nous n'avons reconnu aucune compétence ni aucun outil dans votre CV",
     "unscoredResumeTermsBody": "L'évaluateur ne lit que des mots-clés en anglais et n'en a trouvé aucun dans votre CV : il n'y avait donc rien à comparer avec cette offre. Il n'y a pas de pourcentage ici ; c'est l'absence de mesure, pas une mesure faible.",
     "unscoredResumeTermsTip": "Non évaluée : l'évaluateur n'a reconnu aucune compétence ni aucun outil dans votre CV (il ne lit que des mots-clés en anglais), il n'y avait donc rien à comparer. Ce n'est pas un score faible — c'est une absence de score.",
-    "matchesNoneForRole": "Nous n'avons trouvé aucune offre ouverte pour {{role}} pour le moment : voici donc des offres de votre domaine — évaluées par rapport à votre CV, pas trouvées grâce à lui."
+    "matchesNoneForRole": "Nous n'avons trouvé aucune offre ouverte pour {{role}} pour le moment : voici donc des offres de votre domaine — évaluées par rapport à votre CV, pas trouvées grâce à lui.",
+    "loadMoreTooDeep": "Le tableau ne va pas plus loin dans cette liste. Affinez-la avec un intitulé de poste, un lieu ou un domaine pour atteindre les offres situées plus bas.",
+    "orderFitNoResumeTerms": "non classées — nous n'avons reconnu aucune compétence ni aucun outil dans votre CV : il n'y avait donc rien pour évaluer ces offres. L'évaluateur ne lit que des mots-clés en anglais.",
+    "orderFitScoring": "comparaison de ces offres à votre CV…",
+    "orderFitLimited": "pas encore classées — le quota d'évaluation d'adéquation est épuisé pour l'instant, ces offres n'ont donc pas été évaluées.",
+    "orderFitFailed": "non classées — l'évaluateur n'a pas répondu pour ces offres à l'instant.",
+    "orderFitUnreadable": "non classées — l'évaluateur n'a pas pu lire ces offres : il ne lit que des mots-clés en anglais et n'a reconnu aucune compétence ni aucun outil dans les descriptions que nous avons."
   }
 }

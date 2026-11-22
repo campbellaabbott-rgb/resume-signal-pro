@@ -29,7 +29,11 @@ vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { id: "u1" },
 function stubTable(table: string) {
   const th: Record<string, unknown> = {};
   const self = () => th;
-  for (const k of ["select", "order", "eq", "not", "update", "in", "gte", "lte", "is", "upsert", "delete"]) th[k] = self;
+  for (const k of ["select", "order", "not", "update", "in", "gte", "lte", "is", "upsert", "delete"]) th[k] = self;
+  // The name a read asks for: the page reads a numbered name before it writes
+  // one (BOARD-05), so a read has to answer for the name it was asked.
+  let askedName: string | null = null;
+  th.eq = (col: string, v: unknown) => { if (col === "name") askedName = String(v); return th; };
   // The search the reader saved before holds the plain name; any other is free.
   th.insert = (row: { name: string; params: unknown }) => {
     if (table === "user_job_searches") inserted.push({ name: row.name, params: row.params });
@@ -37,7 +41,7 @@ function stubTable(table: string) {
     return { then: (ok: (v: unknown) => void) => Promise.resolve({ data: null, error: taken ? { code: "23505", message: "duplicate key value" } : null }).then(ok) };
   };
   th.limit = async () => ({ data: [] });
-  th.maybeSingle = async () => ({ data: table === "user_job_searches" && held ? { params: held } : null, error: null });
+  th.maybeSingle = async () => ({ data: table === "user_job_searches" && held && !/\(\d\)$/.test(askedName ?? "") ? { params: held } : null, error: null });
   th.single = async () => ({ data: null });
   th.then = (ok: (v: unknown) => void) => Promise.resolve({ data: [], error: null }).then(ok);
   return th;

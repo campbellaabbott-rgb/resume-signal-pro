@@ -12,6 +12,12 @@
 //     followed a report that never landed.
 // The positive control is the genuine page-capped answer, which keeps its
 // feed sentence because there it is true.
+//
+// Re-pointed 2026-11-21 (L2-15): a bare live:null is no longer read as
+// page-capped (the server answers null for its own failed fetch too), so the
+// control's answer names its reason, uncheckable[id] = "page-capped". What a
+// null without that reason says is pinned in
+// a-check-we-could-not-make-never-blames-the-employers-feed.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { choosePostingMenuItem } from "./helpers/posting-menu";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -87,7 +93,7 @@ beforeEach(() => {
 
 describe("a gone report says what failed, and 'logged' only what was", () => {
   it("positive control: a page-capped feed keeps its feed sentence, and the report is logged", async () => {
-    mock({ verify: () => ({ data: { live: { [ROW.id]: null } }, error: null }), report: () => ({ data: { ok: true }, error: null }) });
+    mock({ verify: () => ({ data: { live: { [ROW.id]: null }, uncheckable: { [ROW.id]: "page-capped" } }, error: null }), report: () => ({ data: { ok: true }, error: null }) });
     await reportGone();
     await waitFor(() => expect(text()).toMatch(/feed lists more roles than it lets us read/), SLOW);
     expect(text()).toMatch(/Your report is logged/);

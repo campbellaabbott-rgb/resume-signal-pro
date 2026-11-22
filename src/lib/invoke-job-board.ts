@@ -17,7 +17,10 @@
  *   - a refusal with code "pass" gets a fresh pass and ONE retry -- the single
  *     exception to "a budget refusal is never retried" (src/lib/board-budget.ts),
  *     because a fresh pass lifts it at once. The refusal names the pass it
- *     refused, so refusals that land one after another share one new pass;
+ *     refused, so refusals that land one after another share one new pass.
+ *     A refusal that stands after that is the caller's to report, with its
+ *     cause (code "pass"); requestFreshBoardPass below is the Retry a page
+ *     offers for it;
  *   - a call that carried a pass and got no answer at all forgets that pass, so
  *     a job-board that does not allow the header (a rollback) is read without it.
  */
@@ -61,6 +64,19 @@ async function withPass<T>(options?: FunctionInvokeOptions) {
   const fresh = await ensureBoardPass({ fresh: true, refused: pass });
   if (!fresh) return first;
   return send<T>(options, fresh);
+}
+
+/**
+ * THE RETRY A "pass" NOTICE OFFERS (S10-164): a new browser check, now. A
+ * person asked for it, so it runs past the cooldown that keeps a broken check
+ * from being re-run for every refused call (board-pass.ts): naming the pass
+ * being replaced, or "" when none is held, is what makes ensureBoardPass start
+ * a new attempt. Resolves the new pass or null; the caller then reads the
+ * board again either way. Nothing happens with the feature off.
+ */
+export function requestFreshBoardPass(): Promise<string | null> {
+  if (!boardPassEnabled()) return Promise.resolve(null);
+  return ensureBoardPass({ fresh: true, refused: heldBoardPass() ?? "" });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -24,6 +24,12 @@
     "unscoredResumeTerms": "Walang puntos — wala kaming nakilalang kasanayan o tool sa résumé mo",
     "unscoredResumeTermsBody": "Ingles na keyword lang ang nababasa ng tagapagbigay ng puntos, at wala itong nakita sa résumé mo, kaya walang maihahambing sa anunsyong ito. Walang porsiyento rito; ibig sabihin ay walang sukat, hindi mahinang sukat.",
     "unscoredResumeTermsTip": "Walang puntos: walang nakilalang kasanayan o tool sa résumé mo ang tagapagbigay ng puntos (Ingles na keyword lang ang nababasa nito), kaya walang maihahambing. Hindi ito mababang puntos — wala talagang puntos.",
-    "matchesNoneForRole": "Wala kaming nahanap na bukas na trabaho para sa {{role}} ngayon, kaya ito ang mga bakante sa larangan mo — binigyan ng puntos batay sa resume mo, hindi nahanap gamit ito."
+    "matchesNoneForRole": "Wala kaming nahanap na bukas na trabaho para sa {{role}} ngayon, kaya ito ang mga bakante sa larangan mo — binigyan ng puntos batay sa resume mo, hindi nahanap gamit ito.",
+    "loadMoreTooDeep": "Hindi na nagpapakita ang board ng mas mababang pahina sa listahang ito. Paliitin ito gamit ang job title, lugar o larangan para maabot ang mga role sa ibaba.",
+    "orderFitNoResumeTerms": "hindi nakaayos — wala kaming nakilalang kasanayan o tool sa résumé mo, kaya walang mapagbabatayan ng puntos ang mga anunsyong ito. Ingles na keyword lang ang nababasa ng tagapagbigay ng puntos.",
+    "orderFitScoring": "binibigyan ng puntos ang mga anunsyong ito laban sa résumé mo…",
+    "orderFitLimited": "hindi pa nakaayos — ubos na muna ang allowance sa fit score, kaya hindi pa nabibigyan ng puntos ang mga anunsyong ito.",
+    "orderFitFailed": "hindi nakaayos — hindi sumagot ngayon lang ang tagapagbigay ng puntos para sa mga anunsyong ito.",
+    "orderFitUnreadable": "hindi nakaayos — hindi nabasa ng tagapagbigay ng puntos ang mga anunsyong ito: Ingles na keyword lang ang nababasa nito, at wala itong nakilalang kasanayan o tool sa mga paglalarawang hawak namin."
   }
 }

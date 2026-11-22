@@ -14,15 +14,22 @@
  *      THE SINGLE EXCEPTION (.87): code "pass" -- the browser's board pass was
  *      missing or stale -- is lifted at once by a fresh pass, so
  *      src/lib/invoke-job-board.ts gets one and retries exactly ONCE before the
- *      caller ever sees the refusal. Nothing else retries a refusal, and a
- *      second "pass" refusal is final like any other (resetAt null: it stands
- *      until the page is reloaded).
+ *      caller ever sees the refusal. Nothing else retries a refusal by
+ *      itself. A second "pass" refusal has no reset time; it keeps its cause
+ *      (code "pass"), so the page can offer the one thing that lifts it, a
+ *      new browser check the reader asks for (liftBoardPassRefusal, with
+ *      requestFreshBoardPass in invoke-job-board.ts), not only a reload.
  *   2. A refusal is not an answer about a posting. A deep link whose detail was
  *      refused used to render "Posting no longer available" and mark a LIVE
  *      posting noindex; a hover prefetch used to cache "" (the employer wrote
  *      no description) for every card under the pointer.
  *   3. Once refused, every further counted call would be refused too, so the
  *      page stops asking until the reset and says so in words.
+ *      EXCEPT THAT A "pass" REFUSAL IS ABOUT ONE CALL'S CHECK, not the
+ *      connection's allowance: the read behind it may well be served. So a
+ *      background call (a count for a badge, a facet, a prefetch, a panel's
+ *      own read) never puts one in the page-wide store, where it stopped the
+ *      list the reader was waiting for; only the page's own read does.
  */
 import { useSyncExternalStore } from "react";
 
@@ -75,8 +82,13 @@ function current(): BoardBudgetRefusal | null {
   return refusal && !(refusal.resetAt && Date.parse(refusal.resetAt) <= Date.now()) ? refusal : null;
 }
 
-/** Record a refusal. Every counted board call short-circuits until its reset. */
-export function markBoardBudgetRefused(r: BoardBudgetRefusal): void {
+/**
+ * Record a refusal. Every counted board call short-circuits until its reset.
+ * `background` is a call the reader is not waiting on: its "pass" refusal is
+ * not recorded (rule 3 above). An allowance refusal always is, whoever met it.
+ */
+export function markBoardBudgetRefused(r: BoardBudgetRefusal, { background = false }: { background?: boolean } = {}): void {
+  if (background && r.code === "pass") return;
   refusal = r;
   if (timer) clearTimeout(timer);
   const ms = r.resetAt ? Date.parse(r.resetAt) - Date.now() : NaN;
@@ -88,6 +100,17 @@ export function markBoardBudgetRefused(r: BoardBudgetRefusal): void {
 /** The standing refusal, or null. Self-clears once its reset has passed. */
 export function boardBudgetRefusal(): BoardBudgetRefusal | null {
   return current();
+}
+
+/**
+ * The reader asked to try again after a "pass" refusal: forget it, so the
+ * next read is sent. True when one was standing. An allowance refusal is
+ * never lifted by a click; it stands until its reset.
+ */
+export function liftBoardPassRefusal(): boolean {
+  if (current()?.code !== "pass") return false;
+  clearBoardBudgetRefusal();
+  return true;
 }
 
 /** For tests: forget any refusal. */

@@ -1,5 +1,6 @@
 import { invokeJobBoard } from "@/lib/invoke-job-board";
 import { boardBudgetRefusal, markBoardBudgetRefused, readBoardBudgetRefusal } from "@/lib/board-budget";
+import { boardPassEnabled, ensureBoardPass } from "@/lib/board-pass";
 
 /**
  * THE ONE READ OF THE BOARD'S STORED FACET ROW, shared by every page that
@@ -16,6 +17,14 @@ import { boardBudgetRefusal, markBoardBudgetRefused, readBoardBudgetRefusal } fr
  *     control: the edge function's own notes record a {limit:1} list call at
  *     30,728ms during the 2026-08-30 saturation incident, and this exit is one
  *     indexed single-row read that should answer in milliseconds.
+ *     THE DEADLINE TIMES THE BOARD'S ANSWER, NOT THE BROWSER'S CHECK
+ *     (S10-163). With a board pass in use the call first waits for the pass,
+ *     which has a deadline of its own (board-pass.ts, ten seconds); raced
+ *     against six from the start, a slow check returned null and blanked
+ *     every count although the board had not been asked yet. The pass is
+ *     waited for first, and the six seconds start when the request can go.
+ *   - that it is a background read. Nobody is waiting on a facet, so its
+ *     "pass" refusal never reaches the page-wide store (board-budget.ts).
  *   - the shape. Every field is validated here so a reader never sees a map
  *     that is not a map, a stamp that is not a string, or an array where an
  *     object was promised. A reader that wants MORE (Explore refuses a category
@@ -82,6 +91,8 @@ export async function readBoardFacets(deadlineMs: number = FACET_DEADLINE_MS): P
   try {
     // A standing budget refusal: no request until the reset (board-budget.ts).
     if (boardBudgetRefusal()) return null;
+    // Resolves at once with the feature off or a pass held; never rejects.
+    if (boardPassEnabled()) await ensureBoardPass();
     const { data, error } = await Promise.race([
       invokeJobBoard({ body: { action: "facets" } }),
       new Promise<{ data: null; error: true }>((res) =>
@@ -89,7 +100,7 @@ export async function readBoardFacets(deadlineMs: number = FACET_DEADLINE_MS): P
     ]);
     if (error) {
       const refused = await readBoardBudgetRefusal(error);
-      if (refused) markBoardBudgetRefused(refused);
+      if (refused) markBoardBudgetRefused(refused, { background: true });
       return null;
     }
     if (!isPlainObject(data)) return null;
