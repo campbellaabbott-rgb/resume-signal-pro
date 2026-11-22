@@ -2,7 +2,12 @@
   "freeScanPage": {
     "a11y": {
       "resumeText": "Texto do seu currículo",
-      "emailAddress": "Seu endereço de e-mail"
+      "emailAddress": "Seu endereço de e-mail",
+      "closeIndustryList": "Fechar a lista de setores",
+      "removeJob": "Remover a vaga selecionada",
+      "removeSpreadsheet": "Remover esta planilha",
+      "clearPosting": "Limpar o anúncio da vaga",
+      "removeProfilePdf": "Remover este PDF do perfil"
     },
     "jobUrl": {
       "truncated": "Esta vaga era mais longa do que conseguimos ler, então só a primeira parte está na caixa."
@@ -170,7 +175,19 @@
       "levelDense": "Alta",
       "levelModerate": "Moderada",
       "levelSparse": "Baixa",
-      "learnAbout": "Saiba mais sobre {{title}}"
+      "learnAbout": "Saiba mais sobre {{title}}",
+      "section": {
+        "contact": "dados de contato",
+        "summary": "resumo",
+        "experience": "experiência",
+        "education": "formação",
+        "skills": "habilidades"
+      },
+      "contact": {
+        "email": "um e-mail",
+        "phone": "um número de telefone",
+        "linkedIn": "um perfil no LinkedIn"
+      }
     },
     "keywordImpact": {
       "critical": "Obrigatório",
@@ -223,7 +240,17 @@
     },
     "report": {
       "scoreBand": "A pontuação {{score}} fica em uma faixa de modelo de {{low}}–{{high}}. A faixa vai do nosso cálculo baseado em regras à estimativa da IA: um único número exato passaria mais precisão do que existe.",
-      "preparing": "Preparando seu relatório…"
+      "preparing": "Preparando seu relatório…",
+      "skillsFreshness": "O quanto suas habilidades estão atualizadas",
+      "careerTrajectory": "Sua trajetória profissional",
+      "levelKeywords": "Palavras-chave esperadas no seu nível",
+      "employmentTimeline": "Linha do tempo da sua experiência",
+      "gapFound": "Um intervalo entre dois cargos",
+      "breakdown": "Do que a pontuação é feita",
+      "breakdownKeywords": "Palavras-chave",
+      "breakdownFormat": "Formatação",
+      "breakdownQuantification": "Números nos seus tópicos",
+      "estImpact": "Impacto estimado: {{impact}}"
     },
     "market": {
       "title": "Inteligência de mercado: {{country}}",
@@ -300,6 +327,36 @@
         "garbled": "caracteres ilegíveis",
         "noSections": "nenhuma seção padrão de currículo"
       }
+    },
+    "fallback": {
+      "automated_review_only": "Apenas revisão automática da formatação: a revisão por IA não estava disponível para esta análise.",
+      "duty_not_result": "Um tópico descreve uma tarefa, não um resultado",
+      "add_numbers": "Adicione números aos tópicos que não têm nenhum: é a forma mais rápida de subir a pontuação",
+      "rewrite_passive_openers": "Reescreva os tópicos que começam com uma expressão passiva",
+      "number_top_three": "Adicione um número concreto a cada um dos seus três tópicos principais",
+      "numberTopThreeWhy": "Um resultado medido é um dos sinais que os recrutadores mais procuram",
+      "numberTopThreeImpact": "+5 a 8 pontos",
+      "startsWith": "começa com “{{opener}}”"
+    },
+    "insights": {
+      "lengthExact_one": "Tamanho de currículo recomendado para este mercado: {{count}} página",
+      "lengthExact_many": "Tamanho de currículo recomendado para este mercado: {{count}} páginas",
+      "lengthExact_other": "Tamanho de currículo recomendado para este mercado: {{count}} páginas",
+      "lengthRange": "Tamanho de currículo recomendado para este mercado: de {{min}} a {{max}} páginas"
+    },
+    "partial": {
+      "noPostingComparison": "Ele não foi comparado com o anúncio de vaga que você adicionou: analise de novo para conferir com o anúncio."
+    },
+    "since": {
+      "title": "Desde a sua última análise: {{before}} → {{after}}",
+      "flags": "Sinais de alerta {{before}} → {{after}}.",
+      "up": "Mais alta que da última vez. As constatações abaixo explicam cada ponto.",
+      "down": "Mais baixa que da última vez, muitas vezes por um alvo diferente ou conteúdo cortado. As constatações abaixo explicam cada ponto.",
+      "same": "A pontuação não mudou. As constatações abaixo mostram o que a faria mudar."
+    },
+    "detection": {
+      "title": "Setor detectado automaticamente: está certo?",
+      "body": "Lemos este currículo como {{industry}} a partir de poucos sinais. Se não for isso, escolha sua área no seletor de setor acima: as listas de palavras-chave, as dicas e o treino de entrevista deste relatório seguem a escolha na hora. A pontuação, as constatações e a recomendação de formato são desta análise, escritas para {{industry}}; analise de novo e elas serão escritas para a área que você escolheu."
     }
   }
 }

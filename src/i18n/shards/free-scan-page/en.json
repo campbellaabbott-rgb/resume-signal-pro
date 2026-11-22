@@ -2,7 +2,12 @@
   "freeScanPage": {
     "a11y": {
       "resumeText": "Your résumé text",
-      "emailAddress": "Your email address"
+      "emailAddress": "Your email address",
+      "closeIndustryList": "Close the list of industries",
+      "removeJob": "Remove the selected job",
+      "removeSpreadsheet": "Remove this spreadsheet",
+      "clearPosting": "Clear the job posting",
+      "removeProfilePdf": "Remove this profile PDF"
     },
     "jobUrl": {
       "truncated": "This posting was longer than we can read, so only its first part is in the box."
@@ -170,7 +175,19 @@
       "levelDense": "Dense",
       "levelModerate": "Moderate",
       "levelSparse": "Sparse",
-      "learnAbout": "Learn about {{title}}"
+      "learnAbout": "Learn about {{title}}",
+      "section": {
+        "contact": "contact details",
+        "summary": "summary",
+        "experience": "experience",
+        "education": "education",
+        "skills": "skills"
+      },
+      "contact": {
+        "email": "an email address",
+        "phone": "a phone number",
+        "linkedIn": "a LinkedIn profile"
+      }
     },
     "keywordImpact": {
       "critical": "Must have",
@@ -222,7 +239,17 @@
     },
     "report": {
       "scoreBand": "Score {{score}} sits in a modeling band of {{low}}–{{high}}. The band spans our rule-based calculation and the AI estimate: one exact figure would claim more precision than there is.",
-      "preparing": "Preparing your report…"
+      "preparing": "Preparing your report…",
+      "skillsFreshness": "How current your skills are",
+      "careerTrajectory": "Your career path",
+      "levelKeywords": "Keywords expected at your level",
+      "employmentTimeline": "Your work history timeline",
+      "gapFound": "A gap between roles",
+      "breakdown": "What the score is made of",
+      "breakdownKeywords": "Keywords",
+      "breakdownFormat": "Format",
+      "breakdownQuantification": "Numbers in your bullets",
+      "estImpact": "Est. impact: {{impact}}"
     },
     "market": {
       "title": "{{country}} Market Intelligence",
@@ -299,6 +326,35 @@
         "garbled": "garbled characters",
         "noSections": "no standard résumé sections"
       }
+    },
+    "fallback": {
+      "automated_review_only": "Automated formatting review only: the AI review was unavailable for this scan.",
+      "duty_not_result": "A bullet reads as a duty, not a result",
+      "add_numbers": "Add numbers to the bullets that have none: they are the quickest way to lift the score",
+      "rewrite_passive_openers": "Rewrite the bullets that start with a passive phrase",
+      "number_top_three": "Add a concrete number to each of your top three bullets",
+      "numberTopThreeWhy": "A measured result is one of the strongest things a screener looks for",
+      "numberTopThreeImpact": "+5 to 8 points",
+      "startsWith": "starts with \"{{opener}}\""
+    },
+    "insights": {
+      "lengthExact_one": "Recommended résumé length for this market: {{count}} page",
+      "lengthExact_other": "Recommended résumé length for this market: {{count}} pages",
+      "lengthRange": "Recommended résumé length for this market: {{min}} to {{max}} pages"
+    },
+    "partial": {
+      "noPostingComparison": "It was not compared with the job posting you added: scan again to check against the posting."
+    },
+    "since": {
+      "title": "Since your last scan: {{before}} → {{after}}",
+      "flags": "Red flags {{before}} → {{after}}.",
+      "up": "Higher than last time. The findings below explain each point.",
+      "down": "Lower than last time, often because of a different target or trimmed content. The findings below explain each point.",
+      "same": "No change in the score. The findings below show what would move it."
+    },
+    "detection": {
+      "title": "Industry auto-detected — does this look right?",
+      "body": "We read this résumé as {{industry}} from few signals. If that's wrong, choose your field in the industry selector above: the keyword lists, the tips and the interview practice in this report follow it at once. The score, the findings and the format advice are this scan's, written for {{industry}}; scan again and they are written for the field you chose."
     }
   }
 }

@@ -2,7 +2,12 @@
   "freeScanPage": {
     "a11y": {
       "resumeText": "Texte de votre CV",
-      "emailAddress": "Votre adresse e-mail"
+      "emailAddress": "Votre adresse e-mail",
+      "closeIndustryList": "Fermer la liste des secteurs",
+      "removeJob": "Retirer l’offre sélectionnée",
+      "removeSpreadsheet": "Retirer ce tableur",
+      "clearPosting": "Effacer l’offre d’emploi",
+      "removeProfilePdf": "Retirer ce PDF de profil"
     },
     "jobUrl": {
       "truncated": "Cette offre était plus longue que ce que nous pouvons lire : seule sa première partie figure dans le champ."
@@ -170,7 +175,19 @@
       "levelDense": "Élevée",
       "levelModerate": "Moyenne",
       "levelSparse": "Faible",
-      "learnAbout": "En savoir plus : {{title}}"
+      "learnAbout": "En savoir plus : {{title}}",
+      "section": {
+        "contact": "coordonnées",
+        "summary": "résumé",
+        "experience": "expérience",
+        "education": "formation",
+        "skills": "compétences"
+      },
+      "contact": {
+        "email": "une adresse e-mail",
+        "phone": "un numéro de téléphone",
+        "linkedIn": "un profil LinkedIn"
+      }
     },
     "keywordImpact": {
       "critical": "Indispensable",
@@ -223,7 +240,17 @@
     },
     "report": {
       "scoreBand": "Le score {{score}} se situe dans une fourchette de modélisation de {{low}}–{{high}}. Cette fourchette va de notre calcul fondé sur des règles à l'estimation de l'IA : un chiffre exact unique prétendrait à plus de précision qu'il n'y en a.",
-      "preparing": "Préparation de votre rapport…"
+      "preparing": "Préparation de votre rapport…",
+      "skillsFreshness": "L’actualité de vos compétences",
+      "careerTrajectory": "Votre parcours professionnel",
+      "levelKeywords": "Mots-clés attendus à votre niveau",
+      "employmentTimeline": "Chronologie de votre parcours",
+      "gapFound": "Une interruption entre deux postes",
+      "breakdown": "De quoi se compose le score",
+      "breakdownKeywords": "Mots-clés",
+      "breakdownFormat": "Mise en forme",
+      "breakdownQuantification": "Chiffres dans vos puces",
+      "estImpact": "Effet estimé : {{impact}}"
     },
     "market": {
       "title": "Informations sur le marché : {{country}}",
@@ -300,6 +327,36 @@
         "garbled": "des caractères illisibles",
         "noSections": "aucune section de CV standard"
       }
+    },
+    "fallback": {
+      "automated_review_only": "Vérification automatique de la mise en forme uniquement : la relecture par IA n’était pas disponible pour cette analyse.",
+      "duty_not_result": "Une puce décrit une tâche, pas un résultat",
+      "add_numbers": "Ajoutez des chiffres aux puces qui n’en ont pas : c’est le moyen le plus rapide de relever le score",
+      "rewrite_passive_openers": "Réécrivez les puces qui commencent par une tournure passive",
+      "number_top_three": "Ajoutez un chiffre concret à chacune de vos trois puces principales",
+      "numberTopThreeWhy": "Un résultat mesuré est l’un des signaux que les recruteurs recherchent le plus",
+      "numberTopThreeImpact": "+5 à 8 points",
+      "startsWith": "commence par « {{opener}} »"
+    },
+    "insights": {
+      "lengthExact_one": "Longueur de CV recommandée pour ce marché : {{count}} page",
+      "lengthExact_many": "Longueur de CV recommandée pour ce marché : {{count}} pages",
+      "lengthExact_other": "Longueur de CV recommandée pour ce marché : {{count}} pages",
+      "lengthRange": "Longueur de CV recommandée pour ce marché : de {{min}} à {{max}} pages"
+    },
+    "partial": {
+      "noPostingComparison": "Il n’a pas été comparé à l’offre d’emploi que vous avez ajoutée : relancez l’analyse pour le confronter à l’offre."
+    },
+    "since": {
+      "title": "Depuis votre dernière analyse : {{before}} → {{after}}",
+      "flags": "Signaux d’alerte {{before}} → {{after}}.",
+      "up": "Plus haut que la dernière fois. Les constats ci-dessous expliquent chaque point.",
+      "down": "Plus bas que la dernière fois, souvent à cause d’une autre cible ou d’un contenu raccourci. Les constats ci-dessous expliquent chaque point.",
+      "same": "Le score n’a pas changé. Les constats ci-dessous montrent ce qui le ferait bouger."
+    },
+    "detection": {
+      "title": "Secteur détecté automatiquement : est-ce le bon ?",
+      "body": "Nous avons lu ce CV comme {{industry}} à partir de peu d’indices. Si ce n’est pas le cas, choisissez votre domaine dans le sélecteur de secteur ci-dessus : les listes de mots-clés, les conseils et l’entraînement à l’entretien de ce rapport le suivent aussitôt. Le score, les constats et la recommandation de format sont ceux de cette analyse, écrits pour {{industry}} ; relancez une analyse et ils seront écrits pour le domaine choisi."
     }
   }
 }

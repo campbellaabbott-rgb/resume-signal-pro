@@ -1,0 +1,2822 @@
+{
+ "about": "Role-title corpus for getRoleAdvice (OI-28), built 2026-11-21. Every title is a real job posting's own title, as the board served it, read from the fixtures named in each row's 'from' (public posting pages and feeds the board carries). Rows: every title among those fixtures' 4,068 English-script titles whose card changed between origin/main (4a3c2a0bd) and this build, and a seeded sample (seed 20261121) of 80 titles whose card did not change and 50 that get no card. 'main' is origin/main's card for the title, recorded by running its getRoleAdvice; 'expected' is the card whose tips fit the job, read by hand (null: no card fits, so the generic tips are right). A row main got right must stay right (the never-worse rule). Added at review (2026-11-21): every title in those fixtures, and every one of the board's 15,068 unique titles (the ops folder's free-scan-wave-corpora/review-_source/titles.json, public posting titles read 2026-11-01, and free-scan-wave-corpora/S13-092/corpus.json), whose card changed between the lane's first build and this one, with 'Software Development Manager, Integrations' from that folder's postings.json (lever:air-tek), and 'Python Team Lead - AI & Automation', which the lane's first build had dropped to no card. A title that names a director, a head or a VP is labelled null whatever its seller's word ('AI Sales Director' was labelled sales_representative beside 'Director of Sales' at null; both are null now). Added at the second review (2026-11-21): every title among the 20,361 those sources hold (the fixtures above, that folder's titles.json, postings.json and S13-092/corpus.json) that names a director, a VP, a head or a chief together with a seller's word (sales, business development, account executive, BDR, SDR) and was not yet here, 43 titles, among them the 7 postings.json titles whose card changed between the lane's first build and its second ('Sales Director, Software Services (U.S Only)', recruitee:allshoretalent:2761686, which the second build gave a software engineer's card), each with its posting id. A sales leader's title is labelled null; one that leads marketing with the selling ('Director of Sales and Marketing', 'Sales & Marketing Director, Brazil') is labelled marketing_manager, the card origin/main gave it.",
+ "read": "2026-11-21",
+ "baseCommit": "4a3c2a0bd",
+ "rows": [
+  {
+   "title": "Environmental Specialist (Sherman, Texas)",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Clinical Specialist, Neurovascular - Georgia",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Case Qualification Specialist, Georgia",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Life Insurance Specialist - Georgia",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Washington Certified Peer Recovery Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Washington Certified Peer Support Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "School Technology Specialist - Washington, DC",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Registration Specialist- Jersey Shore",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Greenlake Sales Specialist (New Jersey)",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Diagnostic Specialist - New England",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Sales Development Manager (Northern England)",
+   "from": "model-queries-2026-11.json",
+   "main": "engineering_manager",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Senior New England Claims Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Practice Transformation Specialist, New England",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Regional Business Specialist, New England",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "VP, National Sales - New England",
+   "from": "model-queries-2026-11.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Technical Sales Specialist - Northern England",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Phoenix - Safety & Health Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Sr. Genomic Specialist, Phoenix",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Boston Tax Partner - Technology",
+   "from": "model-queries-2026-11.json",
+   "main": "attorney",
+   "expected": null
+  },
+  {
+   "title": "Audit Partner — Dallas",
+   "from": "model-queries-2026-11.json",
+   "main": "attorney",
+   "expected": null
+  },
+  {
+   "title": "Order Management Specialist (Dallas)",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Houston-Baybrook TX - Store Sales Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "OnSite Specialist - Houston, TX",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "PT Stylist, Houston Galleria",
+   "from": "model-queries-2026-11.json",
+   "main": "physical_therapist",
+   "expected": null
+  },
+  {
+   "title": "Key Account Specialist, Houston",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Austin Sales & Education Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Austin Aviation - Contract Management Specialist III",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Leasing & Sales Specialist - Austin, TX",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Chicago Property Field Claim Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Chicago VM (Oak Brook) Car Detailer (PT)",
+   "from": "model-queries-2026-11.json",
+   "main": "physical_therapist",
+   "expected": null
+  },
+  {
+   "title": "Clinical Specialist - Chicago",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Facilities Market Specialist, Chicago",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Territory Development Manager - Chicago",
+   "from": "model-queries-2026-11.json",
+   "main": "engineering_manager",
+   "expected": null
+  },
+  {
+   "title": "Sr. Retirement Specialist - Virginia",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Market Specialist, North Carolina & Tennessee",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Advanced Practice Provider - Carolina Oncology Specialists",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Regional Marketing Specialist, Florida",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": "marketing_manager"
+  },
+  {
+   "title": "Lending New York - Senior Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Activation Specialist (London)",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Registrar - Berlin - PT (1st Shift)",
+   "from": "model-queries-2026-11.json",
+   "main": "physical_therapist",
+   "expected": null
+  },
+  {
+   "title": "Relationship Partner Associate - Madrid",
+   "from": "model-queries-2026-11.json",
+   "main": "attorney",
+   "expected": null
+  },
+  {
+   "title": "UK Fiduciary - Cash Cycle Specialists",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "PR Specialist, UK",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "USA HR Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": "hr_manager"
+  },
+  {
+   "title": "USA Sr. Specialist, Account Services",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Customer Experience Specialist, USA",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Convention Specialist - Remote (USA)",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Germany Payroll Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Business Development Manager - Manchester",
+   "from": "model-queries-2026-11.json",
+   "main": "engineering_manager",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Provider Engagement Specialist (Mexico)",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Order Management Specialist Mexico",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Spain Payroll Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Partnership Specialist Spain",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Sales Specialist Spain",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Training Team Lead, Spain",
+   "from": "model-queries-2026-11.json",
+   "main": "engineering_manager",
+   "expected": null
+  },
+  {
+   "title": "France Content Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Enterprise Sales Specialist - France",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Brazil Content Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Brazil Institutional Sales – Associate/Vice President",
+   "from": "model-queries-2026-11.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Content Marketing Specialist (Brazil)",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": "marketing_manager"
+  },
+  {
+   "title": "Customer Support Specialist - Brazil",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Account Specialist ASO, Brazil",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Director Analyst – AI in Sales Enablement (Remote, UK)",
+   "from": "model-queries-2026-11.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "FSP Country Approval Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Social Media Content Coordinator (PT) - Remote",
+   "from": "model-queries-2026-11.json",
+   "main": "physical_therapist",
+   "expected": "social_media_manager"
+  },
+  {
+   "title": "Visa Support Specialist II",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Passport and Visa Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Swine Specialist - VISA TN (candidates from Mexico and Canada Only)",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Sponsorship Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Sponsor Dedicated Site Activation Specialist I - Sofia",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Business Development Manager – Alternative Sponsor Group",
+   "from": "model-queries-2026-11.json",
+   "main": "engineering_manager",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Recent Graduate (Grants Management Specialist)",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "QA Specialist I, Recent Graduate",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": "qa_engineer"
+  },
+  {
+   "title": "IT Cybersecurity Specialist (Recent Graduates)",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": "security_analyst"
+  },
+  {
+   "title": "Human Resources Specialist (Recent Graduate)",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": "hr_manager"
+  },
+  {
+   "title": "Loan Assistant/Specialist (Agricultural) (Recent Graduate)",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Maintenance Technician - PT (25 hours per week)",
+   "from": "model-queries-2026-11.json",
+   "main": "physical_therapist",
+   "expected": null
+  },
+  {
+   "title": "Customer Operations & Backoffice Specialist – Enschede(32 uur per week)",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Inventory Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Charge Posting Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Specialist, Cash Posting",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Post Closing Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Post Market Surveillance Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "RCM Specialists (Payment Posting)",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Superviseur (PT)",
+   "from": "model-queries-2026-11.json",
+   "main": "physical_therapist",
+   "expected": null
+  },
+  {
+   "title": "Accounting Specialist - BR",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Especialista em Customer Engagement",
+   "from": "model-queries-2026-11.json",
+   "main": "engineering_manager",
+   "expected": null
+  },
+  {
+   "title": "Procurement Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": "supply_chain_manager"
+  },
+  {
+   "title": "Contract Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "IT Systems Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "CyberArk PAM Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Shipping & Receiving Specialist (w/m/d)",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "EM, DDAI Strategy & Performance Intelligence",
+   "from": "model-queries-2026-11.json",
+   "main": "engineering_manager",
+   "expected": null
+  },
+  {
+   "title": "EM Center of Excellence Intern",
+   "from": "model-queries-2026-11.json",
+   "main": "engineering_manager",
+   "expected": null
+  },
+  {
+   "title": "EM APP CAB FT WFEP",
+   "from": "model-queries-2026-11.json",
+   "main": "engineering_manager",
+   "expected": null
+  },
+  {
+   "title": "EM Home Lending, Data and Intelligence",
+   "from": "model-queries-2026-11.json",
+   "main": "engineering_manager",
+   "expected": null
+  },
+  {
+   "title": "Especialista em Dados",
+   "from": "model-queries-2026-11.json",
+   "main": "engineering_manager",
+   "expected": null
+  },
+  {
+   "title": "Especialista em Qualidade II",
+   "from": "model-queries-2026-11.json",
+   "main": "engineering_manager",
+   "expected": null
+  },
+  {
+   "title": "Especialista em Cloud Governance",
+   "from": "model-queries-2026-11.json",
+   "main": "engineering_manager",
+   "expected": null
+  },
+  {
+   "title": "Senior Manager, EM Procurement",
+   "from": "model-queries-2026-11.json",
+   "main": "engineering_manager",
+   "expected": "supply_chain_manager"
+  },
+  {
+   "title": "Jovem Aprendiz em Compras",
+   "from": "model-queries-2026-11.json",
+   "main": "engineering_manager",
+   "expected": null
+  },
+  {
+   "title": "VP, Talent Partnerships - EM&A",
+   "from": "model-queries-2026-11.json",
+   "main": "engineering_manager",
+   "expected": null
+  },
+  {
+   "title": "Host Cashier Reel Em In",
+   "from": "model-queries-2026-11.json",
+   "main": "engineering_manager",
+   "expected": null
+  },
+  {
+   "title": "Apartment Office Manager Near San Diego State University",
+   "from": "model-queries-2026-11.json",
+   "main": "executive_assistant",
+   "expected": null
+  },
+  {
+   "title": "Customer Care Specialist-Must Reside in Florida (Based in or Near Orlando, FL)",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Scientific Support Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Scientific Engagement Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "DRP Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Specialist Benefits Operations",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Team Lead",
+   "from": "model-queries-2026-11.json",
+   "main": "engineering_manager",
+   "expected": null
+  },
+  {
+   "title": "Restaurant Server PM",
+   "from": "model-queries-2026-11.json",
+   "main": "product_manager",
+   "expected": null
+  },
+  {
+   "title": "Tier 2 Support Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": "help_desk_analyst"
+  },
+  {
+   "title": "Tier 1 Support Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": "help_desk_analyst"
+  },
+  {
+   "title": "Tier 2 Operations Support Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Region Development Manager",
+   "from": "model-queries-2026-11.json",
+   "main": "engineering_manager",
+   "expected": null
+  },
+  {
+   "title": "Region Customer Quality Satisfaction Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Region Quality Systems and Processes Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Metro Detroit Field Property Claim Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Area Development Manager",
+   "from": "model-queries-2026-11.json",
+   "main": "engineering_manager",
+   "expected": null
+  },
+  {
+   "title": "Area Pricing Specialist",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Senior Regulatory Affairs Specialist CoE",
+   "from": "perks-test-split.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Team Lead - Mid-Market Advertising Sales",
+   "from": "perks-test-split.json",
+   "main": "engineering_manager",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Quality Specialist",
+   "from": "perks-test-split.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Director, Sales (HME)",
+   "from": "perks-test-split.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Customer Service Specialist",
+   "from": "perks-test-split.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Scheduling Specialist",
+   "from": "perks-test-split.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Team Lead - Technical Support",
+   "from": "perks-test-split.json",
+   "main": "engineering_manager",
+   "expected": null
+  },
+  {
+   "title": "Accounts Payable Specialist",
+   "from": "perks-test-split.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Team lead, Deal Desk (Enterprise)",
+   "from": "perks-test-split.json",
+   "main": "engineering_manager",
+   "expected": null
+  },
+  {
+   "title": "Call Center Specialist",
+   "from": "experience-merge-recheck-corpus-2026-10-25.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Labor Relations Specialist",
+   "from": "experience-merge-recheck-corpus-2026-10-25.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Training Specialist - Chief Administrative Office",
+   "from": "posting-terms-boilerplate-2026-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Senior Technical Success Management Partner, US Broadcast",
+   "from": "posting-terms-boilerplate-2026-11.json",
+   "main": "attorney",
+   "expected": null
+  },
+  {
+   "title": "Chief of Staff, CTO",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "executive_assistant",
+   "expected": null
+  },
+  {
+   "title": "Concierge Specialist IV",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Inbound Specialist II, Premium & Wealth",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Specialist, Market Operations",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "AirCover Specialist, Claims Experience",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Connectivity Partner Manager",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "attorney",
+   "expected": null
+  },
+  {
+   "title": "Connectivity Partner Specialist",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "attorney",
+   "expected": null
+  },
+  {
+   "title": "Office Manager, Mexico City",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "executive_assistant",
+   "expected": null
+  },
+  {
+   "title": "Senior Support Specialist, Premium Support",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Chief of Staff to the CMO",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "executive_assistant",
+   "expected": null
+  },
+  {
+   "title": "Delivery Partner Manager, FDE",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "attorney",
+   "expected": null
+  },
+  {
+   "title": "Director, Lakebase Sales Specialist- Financial Services",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Lakebase Sales Specialist",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "physician",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Lead Learning Technical Enablement Specialist",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Manager, Field Engineering (Specialist) - HCLS",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Sr. Technology Partner Director, Product Partnerships",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "attorney",
+   "expected": null
+  },
+  {
+   "title": "Sr. Technology Partner Director, Security & Observability ISV Partnerships",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "attorney",
+   "expected": null
+  },
+  {
+   "title": "Staff Partner Engineer, Azure",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "attorney",
+   "expected": "software_engineer"
+  },
+  {
+   "title": "Staff People Partner, Corporate Functions",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "attorney",
+   "expected": null
+  },
+  {
+   "title": "Technical Business Development Manager, Startup & VC Ecosystem",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "engineering_manager",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Technical Enablement Specialist  - Field Engineering Onboarding",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Asset Movement Operations Senior Specialist",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Benefits Partner",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "attorney",
+   "expected": null
+  },
+  {
+   "title": "Brokerage Communications Specialist",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Brokerage Operations Specialist",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Customer Experience Team Lead, Money",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "engineering_manager",
+   "expected": null
+  },
+  {
+   "title": "Customer Experience Team Lead, RHM Executive Office",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "engineering_manager",
+   "expected": null
+  },
+  {
+   "title": "Employee Relations Business Partner",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "attorney",
+   "expected": null
+  },
+  {
+   "title": "Fraud and Disputes Vendor Management Specialist",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Futures Compliance Senior Specialist",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "People Partner Intern (Summer 2027)",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "attorney",
+   "expected": null
+  },
+  {
+   "title": "Senior Payroll Tax Specialist",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Senior PM, International Trading",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "product_manager",
+   "expected": null
+  },
+  {
+   "title": "Distribution Partner Manager",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "attorney",
+   "expected": null
+  },
+  {
+   "title": "Product Partner Manager, Scaled",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "attorney",
+   "expected": null
+  },
+  {
+   "title": "BRANDING SPECIALIST I",
+   "from": "shouted-job-titles-2026-11-15.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "BUSINESS DEVELOPMENT MANAGER",
+   "from": "shouted-job-titles-2026-11-15.json",
+   "main": "engineering_manager",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "CODING SPECIALIST SR - BREAST & GEN SURGERY",
+   "from": "shouted-job-titles-2026-11-15.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "HUMAN RESOURCES SPECIALIST (RECRUITMENT & PLACEMENT)",
+   "from": "shouted-job-titles-2026-11-15.json",
+   "main": "physician",
+   "expected": "hr_manager"
+  },
+  {
+   "title": "Guest Experience Specialist",
+   "from": "other-bucket-v10-term-matches.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Food Service Worker - PT - Evenings - MRH",
+   "from": "other-bucket-v10-term-matches.json",
+   "main": "physical_therapist",
+   "expected": null
+  },
+  {
+   "title": "Dietary Aide - PT",
+   "from": "other-bucket-v10-term-matches.json",
+   "main": "physical_therapist",
+   "expected": null
+  },
+  {
+   "title": "Behavioral Health Specialist Requires LCSW LPC or LMFT Bilingual Spanish Preferred",
+   "from": "other-bucket-v10-term-matches.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Behavioral Health Specialist Requires LCSW LPC or LMFT",
+   "from": "other-bucket-v10-term-matches.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Qualified Behavioral Health Provider - Russellville/PT",
+   "from": "other-bucket-v10-term-matches.json",
+   "main": "physical_therapist",
+   "expected": null
+  },
+  {
+   "title": "Behavioral Health Assessment Specialist - LCSW - Night Shift",
+   "from": "other-bucket-v10-term-matches.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Care Partner/Medication Assistant 11pm-7am-Part-Time",
+   "from": "other-bucket-v10-term-matches.json",
+   "main": "attorney",
+   "expected": null
+  },
+  {
+   "title": "Care Partner/Medication Assistant-Part-Time Weekends",
+   "from": "other-bucket-v10-term-matches.json",
+   "main": "attorney",
+   "expected": null
+  },
+  {
+   "title": "ED Monitor Tech PT Nights",
+   "from": "other-bucket-v10-term-matches.json",
+   "main": "physical_therapist",
+   "expected": null
+  },
+  {
+   "title": "MWD Remote Operations Specialist 1 - GOTEC",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Remote Support Specialist (Thai Speaker)",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Renewal Specialist (Dutch- Speaking) - Hybrid - Cloud Solutions -MV02",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Remote Monitoring Specialist",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Hybrid Cloud Sales Specialist",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "physician",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Hybrid Cloud Solutions Specialist",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Director, Chief of Staff for Hybrid Cloud COO",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "executive_assistant",
+   "expected": null
+  },
+  {
+   "title": "Hybrid Cloud Solutions Channel Specialist",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Business Development Manager (HPE Hybrid IT)",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "engineering_manager",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Business Development Manager HPE Hybrid Cloud",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "engineering_manager",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Remote Support Specialist 3 - MI PET",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Remote Monitoring Specialist - P2",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Business Development Manager - HPE Hybrid Cloud",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "engineering_manager",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Remote Operations Center Specialist (Live Sports & Entertainment)",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Regional Vice President of Sales - West",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Cruise & Resort Reservation Specialist (Remote)",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Remote | Booking Coordinating Specialist",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Remote Hotel Reservation Specialist",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Remote Travel Booking Specialist – Hotels & Resorts",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Remote-Luxury Destination Specialist",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Travel Client Success Specialist (Remote)",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "physician",
+   "expected": "customer_success"
+  },
+  {
+   "title": "Courtroom Presentation Specialist",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Data Specialist",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Records Management Specialist II",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Senior Data Specialist",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Senior Data Specialist II",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Partner Success Manager (Midwest - Remote)",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "attorney",
+   "expected": null
+  },
+  {
+   "title": "Founding Member, Software Portfolio Specialist - Delhi NCR (Hybrid)",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "B2B Lead Generation Specialist - Full Remote",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Partner Manager – System Integrators",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "attorney",
+   "expected": null
+  },
+  {
+   "title": "Business Consultant - Council Tax / Business Rates Specialist",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Head of DACH Sales",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Business Development Manager (BDM) -  Nationwide -  Circa 41k Package - 53k OTE Uncapped",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "engineering_manager",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Learning Partner - New York City",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "attorney",
+   "expected": null
+  },
+  {
+   "title": "Shift Leader (PM Shift)",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "product_manager",
+   "expected": null
+  },
+  {
+   "title": "Greek Technical Operations Data Specialist",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "AI Data Specialist - Thai",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Business Development Manager",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "engineering_manager",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Inside Sales Specialist",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "physician",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Proposal Specialist",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Clinical Technology Specialist - Entry Level",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Service Delivery Team Lead (Spanish)",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "engineering_manager",
+   "expected": null
+  },
+  {
+   "title": "CRM Specialist",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Digital Operations, Item Specialist",
+   "from": "paylocity-home-office-census.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Office Manager - EVEREVE Headquarters - Edina, MN",
+   "from": "paylocity-home-office-census.json",
+   "main": "executive_assistant",
+   "expected": null
+  },
+  {
+   "title": "Front End Operations Specialist",
+   "from": "paylocity-home-office-census.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Senior Agent Contracting and Commissions Specialist",
+   "from": "paylocity-home-office-census.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Agent Contracting and Commissions Specialist I",
+   "from": "paylocity-home-office-census.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Multi-State Licensure Specialist",
+   "from": "paylocity-home-office-census.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Senior Procurement Specialist",
+   "from": "posting-selection-screen-2026-11-15.json",
+   "main": "physician",
+   "expected": "supply_chain_manager"
+  },
+  {
+   "title": "ANALISTA DE INVESTIGACION Y CUMPLIMIENTO Elk Grove - PT",
+   "from": "posting-selection-screen-2026-11-15.json",
+   "main": "physical_therapist",
+   "expected": null
+  },
+  {
+   "title": "Import-Export Compliance Specialist",
+   "from": "posting-selection-screen-2026-11-15.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Sales Specialist",
+   "from": "posting-selection-screen-2026-11-15.json",
+   "main": "physician",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Quantum Go-To-Market Specialist",
+   "from": "posting-selection-screen-2026-11-15.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Global Managing Partner, Performance & Investment",
+   "from": "posting-selection-screen-2026-11-15.json",
+   "main": "attorney",
+   "expected": null
+  },
+  {
+   "title": "Relationship Manager - Retail Sales - Direct Channel - Housing - EM - Sales - Ghaziabad - Raj Nagar - J Grades",
+   "from": "posting-selection-screen-2026-11-15.json",
+   "main": "engineering_manager",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Director of Sales",
+   "from": "posting-selection-screen-2026-11-15.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Seasonal PT Operations Supervisor",
+   "from": "posting-selection-screen-2026-11-15.json",
+   "main": "physical_therapist",
+   "expected": null
+  },
+  {
+   "title": "Engineering Team Leader",
+   "from": "posting-selection-screen-2026-11-15.json",
+   "main": null,
+   "expected": "engineering_manager"
+  },
+  {
+   "title": "Finance Transformation Specialist",
+   "from": "posting-selection-screen-2026-11-15.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "VP. Americas Sales",
+   "from": "posting-selection-screen-2026-11-15.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Director of Sales, Union Labor and Trusts",
+   "from": "posting-selection-screen-2026-11-15.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Vice President Sales, Public Sector (U.S. and Canada)",
+   "from": "posting-selection-screen-2026-11-15.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Contracts Specialist",
+   "from": "posting-selection-screen-2026-11-15.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Team Lead- Network Operations – Tier 2",
+   "from": "posting-selection-screen-2026-11-15.json",
+   "main": "engineering_manager",
+   "expected": null
+  },
+  {
+   "title": "Director, Sales (Commercial and Individual Sales-AvMed Health Plans)",
+   "from": "posting-titles-2026-11-08.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Retail Receiving Specialist Part Time",
+   "from": "posting-titles-2026-11-08.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "CNA/Med Tech AL FULL-TIME 3-11 PM",
+   "from": "posting-titles-2026-11-08.json",
+   "main": "product_manager",
+   "expected": null
+  },
+  {
+   "title": "Workforce Analytics Specialist I (Hybrid & Night Shift)",
+   "from": "posting-titles-2026-11-08.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Specialist - Software Engineering",
+   "from": "posting-titles-2026-11-08.json",
+   "main": "physician",
+   "expected": "software_engineer"
+  },
+  {
+   "title": "Associate Specialist, Information Management",
+   "from": "posting-titles-2026-11-08.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Client Services Specialist |12 Month Contract",
+   "from": "posting-titles-2026-11-08.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Operational Excellence Specialist",
+   "from": "posting-titles-2026-11-08.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Regional Clinical Sales Specialist, Trauma – Dallas, TX - Johnson & Johnson MedTech - Orthopaedics",
+   "from": "posting-titles-2026-11-08.json",
+   "main": "physician",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Technical Support Specialist III",
+   "from": "posting-titles-2026-11-08.json",
+   "main": "physician",
+   "expected": "it_support_specialist"
+  },
+  {
+   "title": "Pt Preload Supervisor- Cleveland",
+   "from": "posting-titles-2026-11-08.json",
+   "main": "physical_therapist",
+   "expected": null
+  },
+  {
+   "title": "Commercial Loan Closing Specialist",
+   "from": "posting-titles-2026-11-08.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Team Lead - Compliance",
+   "from": "posting-titles-2026-11-08.json",
+   "main": "engineering_manager",
+   "expected": null
+  },
+  {
+   "title": "Pricing & Auction Specialist (m/w/d)",
+   "from": "posting-titles-2026-11-08.json",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Vice President of AI & Infrastructure Sales",
+   "from": "posting-titles-2026-11-08.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Care Giver - Memory Care (FT / AM & PM)",
+   "from": "shouted-mixed",
+   "main": "product_manager",
+   "expected": null
+  },
+  {
+   "title": "Clinical Specialist - Women & Men's Health (Bank)",
+   "from": "shouted-mixed",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Director, Genius Enterprise Sales Operations",
+   "from": "shouted-mixed",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Engineering Specialist, Piping",
+   "from": "shouted-mixed",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Office Manager",
+   "from": "shouted-mixed",
+   "main": "executive_assistant",
+   "expected": null
+  },
+  {
+   "title": "Patient Access Specialist - PRN",
+   "from": "shouted-mixed",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Pharmacy Technician Specialist I",
+   "from": "shouted-mixed",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Seasonal Meta Sales Specialist",
+   "from": "shouted-mixed",
+   "main": "physician",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Specialist-HIM-M",
+   "from": "shouted-mixed",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Tow and Storage Negotiation Specialist",
+   "from": "shouted-mixed",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Vehicle Lot Operations Specialist II (Manheim)",
+   "from": "shouted-mixed",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Workplace Experience Support Specialist Senior",
+   "from": "shouted-mixed",
+   "main": "physician",
+   "expected": null
+  },
+  {
+   "title": "Senior Associate Attorney, Workers' Compensation (Remote - Bay Area, California)",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "attorney",
+   "expected": "attorney"
+  },
+  {
+   "title": "Sponsorship Sales Manager at United Media",
+   "from": "model-queries-2026-11.json",
+   "main": "sales_representative",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Seasonal Sales Associate",
+   "from": "experience-merge-recheck-corpus-2026-10-25.json",
+   "main": "sales_representative",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "AI Sales Director",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Lead Process Safety Engineer (Offshore)",
+   "from": "posting-selection-screen-2026-11-15.json",
+   "main": "software_engineer",
+   "expected": null
+  },
+  {
+   "title": "Veterinarian - Berlin, OH Mixed Animal",
+   "from": "model-queries-2026-11.json",
+   "main": "veterinarian",
+   "expected": "veterinarian"
+  },
+  {
+   "title": "Sales Development Intern, Services, Spain",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "sales_representative",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Business Development Executive - New York",
+   "from": "model-queries-2026-11.json",
+   "main": "sales_representative",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Account Executive - South Texas",
+   "from": "model-queries-2026-11.json",
+   "main": "sales_representative",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Recent Graduate - Safety Engineer",
+   "from": "model-queries-2026-11.json",
+   "main": "software_engineer",
+   "expected": null
+  },
+  {
+   "title": "Area Sales Manager Brazil",
+   "from": "model-queries-2026-11.json",
+   "main": "sales_representative",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Manager, Delivery Solutions Architects",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "cloud_architect",
+   "expected": "cloud_architect"
+  },
+  {
+   "title": "Customer Enablement Architect",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "staff_engineer",
+   "expected": "staff_engineer"
+  },
+  {
+   "title": "Per Diem MD or DO- Visa Clinic Foster City",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": "physician"
+  },
+  {
+   "title": "Lead Clinical Informaticist (Physician) — Federal Health IT",
+   "from": "model-queries-2026-11.json",
+   "main": "physician",
+   "expected": "physician"
+  },
+  {
+   "title": "Junior Attorney / Paralegal, Sales Contracts",
+   "from": "posting-selection-screen-2026-11-15.json",
+   "main": "attorney",
+   "expected": "attorney"
+  },
+  {
+   "title": "Named Hunter Enterprise Account Executive, Healthcare",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "sales_representative",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Sr. Forward Deployed Engineer",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "software_engineer",
+   "expected": "software_engineer"
+  },
+  {
+   "title": "Delivery Solutions Architect",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "cloud_architect",
+   "expected": "cloud_architect"
+  },
+  {
+   "title": "Senior Platform Manager, Data Products, Finance Accounting",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "product_manager",
+   "expected": "product_manager"
+  },
+  {
+   "title": "Senior Engineer-Commissioning-EPP-Egypt",
+   "from": "posting-selection-screen-2026-11-15.json",
+   "main": "software_engineer",
+   "expected": null
+  },
+  {
+   "title": "India GCC - Niche Sales Capture Senior Manager 2",
+   "from": "model-queries-2026-11.json",
+   "main": "sales_representative",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Region Marketing Manager",
+   "from": "model-queries-2026-11.json",
+   "main": "marketing_manager",
+   "expected": "marketing_manager"
+  },
+  {
+   "title": "Staff Product Designer, AI Products",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "ux_designer",
+   "expected": "ux_designer"
+  },
+  {
+   "title": "2027 Sales Intern, Paris",
+   "from": "model-queries-2026-11.json",
+   "main": "sales_representative",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Account Executive, Parks and Recreation (Public Sector) (Hybrid or Remote)",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "sales_representative",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Account Manager, CoStar & LoopNet - Paris",
+   "from": "model-queries-2026-11.json",
+   "main": "sales_representative",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Staff Software Engineer, Frontend (Consumer - Advanced Trading)",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "software_engineer",
+   "expected": "software_engineer"
+  },
+  {
+   "title": "Channel Sales Engineer (France)",
+   "from": "model-queries-2026-11.json",
+   "main": "solutions_engineer",
+   "expected": "solutions_engineer"
+  },
+  {
+   "title": "Academic Tutor Toronto",
+   "from": "model-queries-2026-11.json",
+   "main": "teacher",
+   "expected": "teacher"
+  },
+  {
+   "title": "Post Production Engineer",
+   "from": "model-queries-2026-11.json",
+   "main": "site_reliability_engineer",
+   "expected": null
+  },
+  {
+   "title": "Logistics Manager",
+   "from": "posting-titles-2026-11-08.json",
+   "main": "supply_chain_manager",
+   "expected": "supply_chain_manager"
+  },
+  {
+   "title": "AU Athletics Ticket Sales (Student)",
+   "from": "model-queries-2026-11.json",
+   "main": "sales_representative",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Senior Engineering Manager - Enzyme",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "engineering_manager",
+   "expected": "engineering_manager"
+  },
+  {
+   "title": "Facility Manager, Texas",
+   "from": "model-queries-2026-11.json",
+   "main": "operations_manager",
+   "expected": "operations_manager"
+  },
+  {
+   "title": "Hybrid Sales - Baker COBS Bread Steeple Hill (Pickering)",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "sales_representative",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Equipment Maintenance Engineer",
+   "from": "posting-titles-2026-11-08.json",
+   "main": "software_engineer",
+   "expected": null
+  },
+  {
+   "title": "Senior Staff Software Developer, Core Infrastructure",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "software_engineer",
+   "expected": "software_engineer"
+  },
+  {
+   "title": "SDR (Boston)",
+   "from": "model-queries-2026-11.json",
+   "main": "sales_representative",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Culinary Careers at Mohegan Sun",
+   "from": "model-queries-2026-11.json",
+   "main": "chef",
+   "expected": "chef"
+  },
+  {
+   "title": "Designer UX",
+   "from": "model-queries-2026-11.json",
+   "main": "ux_designer",
+   "expected": "ux_designer"
+  },
+  {
+   "title": "Nurse Practitioner or Physician Assistant - Primary Care - Kirkwood",
+   "from": "posting-selection-screen-2026-11-15.json",
+   "main": "nurse",
+   "expected": "nurse"
+  },
+  {
+   "title": "Sponsorship Sales Manager at Insurtech Insights",
+   "from": "model-queries-2026-11.json",
+   "main": "sales_representative",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "General Manager UK & Ireland",
+   "from": "model-queries-2026-11.json",
+   "main": "operations_manager",
+   "expected": "operations_manager"
+  },
+  {
+   "title": "Pflichtpraktikum Sales & Business Development",
+   "from": "model-queries-2026-11.json",
+   "main": "sales_representative",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Membership Sales Advisor",
+   "from": "posting-selection-screen-2026-11-15.json",
+   "main": "sales_representative",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Logistics Manager (f/m/diverse)",
+   "from": "shouted-mixed",
+   "main": "supply_chain_manager",
+   "expected": "supply_chain_manager"
+  },
+  {
+   "title": "Senior Engineering Manager for Self-Serve (Learning)",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "engineering_manager",
+   "expected": "engineering_manager"
+  },
+  {
+   "title": "Senior Software Engineer - Access Management",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "software_engineer",
+   "expected": "software_engineer"
+  },
+  {
+   "title": "Solutions Architect Digital Natives & Scaleups Italy",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "cloud_architect",
+   "expected": "cloud_architect"
+  },
+  {
+   "title": "Staff Product Designer, National Impact",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "ux_designer",
+   "expected": "ux_designer"
+  },
+  {
+   "title": "Digital Product Manager",
+   "from": "paylocity-home-office-census.json",
+   "main": "product_manager",
+   "expected": "product_manager"
+  },
+  {
+   "title": "Senior Associate - Transaction Support",
+   "from": "posting-titles-2026-11-08.json",
+   "main": "attorney",
+   "expected": "attorney"
+  },
+  {
+   "title": "PRODUCT LOCAL CM SALES SENIOR ANALYST",
+   "from": "shouted-job-titles-2026-11-15.json",
+   "main": "sales_representative",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Senior Staff Software Engineer, Data Platform",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "software_engineer",
+   "expected": "software_engineer"
+  },
+  {
+   "title": "Python Software Entwickler (m/w/d)",
+   "from": "model-queries-2026-11.json",
+   "main": "software_engineer",
+   "expected": "software_engineer"
+  },
+  {
+   "title": "Sr. Data Engineer",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "data_engineer",
+   "expected": "data_engineer"
+  },
+  {
+   "title": "Phoenix Sales Leadership",
+   "from": "model-queries-2026-11.json",
+   "main": "sales_representative",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Registered Nurse - Care at Home",
+   "from": "model-queries-2026-11.json",
+   "main": "nurse",
+   "expected": "nurse"
+  },
+  {
+   "title": "Senior Project Manager BESS",
+   "from": "posting-selection-screen-2026-11-15.json",
+   "main": "project_manager",
+   "expected": "project_manager"
+  },
+  {
+   "title": "Mechatronics & Robotics Apprentice",
+   "from": "posting-titles-2026-11-08.json",
+   "main": "robotics_engineer",
+   "expected": "robotics_engineer"
+  },
+  {
+   "title": "Region Sales Manager",
+   "from": "model-queries-2026-11.json",
+   "main": "sales_representative",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Growth Account Manager - Hybrid Cloud Storage",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "sales_representative",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Lead Full Stack Software Engineer",
+   "from": "shouted-mixed",
+   "main": "software_engineer",
+   "expected": "software_engineer"
+  },
+  {
+   "title": "Senior Trial Attorney - (Hybrid)",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "attorney",
+   "expected": "attorney"
+  },
+  {
+   "title": "Vessel IT Engineer - Maritime Remote Support",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "software_engineer",
+   "expected": null
+  },
+  {
+   "title": "Sr Production Engineer- Public Sector",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "site_reliability_engineer",
+   "expected": "site_reliability_engineer"
+  },
+  {
+   "title": "Lead Development & Validation Engineer – Transmission, PHEV, & Hybrid Systems",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "software_engineer",
+   "expected": null
+  },
+  {
+   "title": "RN / LPN - PRN",
+   "from": "shouted-job-titles-2026-11-15.json",
+   "main": "nurse",
+   "expected": "nurse"
+  },
+  {
+   "title": "HR Lead – India",
+   "from": "model-queries-2026-11.json",
+   "main": "hr_manager",
+   "expected": "hr_manager"
+  },
+  {
+   "title": "French Document Review Attorney",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "attorney",
+   "expected": "attorney"
+  },
+  {
+   "title": "Director, Logistics",
+   "from": "posting-selection-screen-2026-11-15.json",
+   "main": "supply_chain_manager",
+   "expected": "supply_chain_manager"
+  },
+  {
+   "title": "Manager, Delivery Solutions Architects - Financial Services",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "cloud_architect",
+   "expected": "cloud_architect"
+  },
+  {
+   "title": "Research Associate, Analytical Chemitry",
+   "from": "posting-titles-2026-11-08.json",
+   "main": "research_scientist",
+   "expected": "research_scientist"
+  },
+  {
+   "title": "DevOps Engineer - London",
+   "from": "model-queries-2026-11.json",
+   "main": "devops_engineer",
+   "expected": "devops_engineer"
+  },
+  {
+   "title": "Sr. Director, Americas Field Marketing",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "marketing_manager",
+   "expected": "marketing_manager"
+  },
+  {
+   "title": "SALES MANAGER – India",
+   "from": "model-queries-2026-11.json",
+   "main": "sales_representative",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Senior Manager, Field Operations",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "operations_manager",
+   "expected": "operations_manager"
+  },
+  {
+   "title": "Legal Operations Manager, Vendor & Spend Management",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": "operations_manager",
+   "expected": "operations_manager"
+  },
+  {
+   "title": "Sales Manager Adtech - Toronto",
+   "from": "model-queries-2026-11.json",
+   "main": "sales_representative",
+   "expected": "sales_representative"
+  },
+  {
+   "title": "Receptiemedewerker",
+   "from": "model-queries-2026-11.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Senior Compliance Lead, EMEA",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Materialista UPS",
+   "from": "model-queries-2026-11.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Regulatory Affairs Manager - fix-term contract/secondment",
+   "from": "perks-test-split.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Washington Beef Production Worker",
+   "from": "model-queries-2026-11.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Representante de Ventas - Celaya",
+   "from": "other-bucket-v10-term-matches.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Stocking Associate - Part-Time",
+   "from": "other-bucket-v10-term-matches.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "TAVI GCC Therapy Leader",
+   "from": "posting-selection-screen-2026-11-15.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Senior Forecasting and Demand Planning Analyst",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Global Workplace Services Manager, Events & Experiences",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Occupational Therapist-Dallas",
+   "from": "model-queries-2026-11.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Superviseur entretien et usine",
+   "from": "posting-selection-screen-2026-11-15.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Environmental Services Associate (Relief) Evening - Jefferson Abington",
+   "from": "shouted-mixed",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Senior Manager, Registration & Database (Global Visa Program)",
+   "from": "model-queries-2026-11.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Hybrid Driver - Puncak Alam (Full- Time)",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Sr. Associate - F&A - AP 5B",
+   "from": "shouted-mixed",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Head of Brazil",
+   "from": "model-queries-2026-11.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Operatore di confezionamento - Categorie protette (art.1 - L. 68/99)",
+   "from": "posting-titles-2026-11-08.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "CNA  6am-2pm",
+   "from": "shouted-mixed",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Conseiller Surface de Vente H/F",
+   "from": "posting-titles-2026-11-08.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Host - Frederick Chili's",
+   "from": "posting-selection-screen-2026-11-15.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Architectural Design & Engineering Rep - New England",
+   "from": "model-queries-2026-11.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Team Member",
+   "from": "posting-titles-2026-11-08.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Canada Tax N&I - Manager",
+   "from": "model-queries-2026-11.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "SENIOR CREATIVE VIDEO PRODUCER - WAND",
+   "from": "shouted-job-titles-2026-11-15.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "California Workers Compensation Claims Adjuster / Examiner | Remote",
+   "from": "model-queries-2026-11.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Selling Advisor - Children's Selling",
+   "from": "other-bucket-v10-term-matches.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Market Associate",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "City Owner-Operator",
+   "from": "model-queries-2026-11.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Fertigungssteuerer (Mensch)",
+   "from": "model-queries-2026-11.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Service Superintendent - Phoenix, AZ",
+   "from": "model-queries-2026-11.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Maintenance Technician (Austin, TX)",
+   "from": "model-queries-2026-11.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Store Associate",
+   "from": "model-queries-2026-11.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Livreur",
+   "from": "model-queries-2026-11.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Phlebotomist",
+   "from": "posting-selection-screen-2026-11-15.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Residential Loader-Manchester-PA",
+   "from": "model-queries-2026-11.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Auto Body Technician",
+   "from": "posting-selection-screen-2026-11-15.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Team Captain Endzone & Loyalty (Front End)",
+   "from": "posting-titles-2026-11-08.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Regulatory Operations Lead",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Global Initiatives Curator",
+   "from": "pay-text-miner-corpus-2026-11-17.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Assistant Manager | Brickell, Florida",
+   "from": "model-queries-2026-11.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Entwickler (m/w/d) Schwerpunkt Jugendhilfe SGB VIII",
+   "from": "model-queries-2026-11.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Medication Assistant, Certified, Assisted Living",
+   "from": "posting-titles-2026-11-08.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Creator Manager - Paris",
+   "from": "model-queries-2026-11.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Denver Remote Pilot Operator, FAA Regional Training Site",
+   "from": "model-queries-2026-11.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "BCS Business Card Consultant - Washington",
+   "from": "shouted-mixed",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Florida Bodily Injury Litigation Claims Adjuster - Remote",
+   "from": "model-queries-2026-11.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Waitress - Isla at Conrad Dubai",
+   "from": "model-queries-2026-11.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Psychiatrist in Virginia",
+   "from": "model-queries-2026-11.json",
+   "main": null,
+   "expected": "physician"
+  },
+  {
+   "title": "Assistant Manager (04136) 13760 Highway 43, Suite 8",
+   "from": "posting-titles-2026-11-08.json",
+   "main": null,
+   "expected": null
+  },
+  {
+   "title": "Sales Director - Texas",
+   "from": "model-queries-2026-11.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Major Sales Director, New England",
+   "from": "model-queries-2026-11.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Regional Sales Director, Carolina Region",
+   "from": "model-queries-2026-11.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Sponsorship Sales Director",
+   "from": "model-queries-2026-11.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Sales Director – Mid Market (Remote)",
+   "from": "model-queries-2026-11.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Director, Business Development - Government",
+   "from": "posting-terms-boilerplate-2026-11.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Director of Business Development - Southeast Region",
+   "from": "work-mode-corpus-2026-11-11.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Head of Business Development",
+   "from": "posting-selection-screen-2026-11-15.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Software Development Manager",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "engineering_manager",
+   "expected": "engineering_manager"
+  },
+  {
+   "title": "Software Development Manager, Integrations",
+   "from": "free-scan-wave-corpora/review-_source/postings.json",
+   "main": "engineering_manager",
+   "expected": "engineering_manager"
+  },
+  {
+   "title": "Enterprise Sales Director",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Sales Director - CO, UT, NM",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Sales Director [Podads]",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Regional Sales Director, Nordics (Sweden)",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Head of Business Development and Partnerships",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Head, Business Development, Stanbic IBTC Insurance Brokers Limited",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Associate Director - Business Development & Program Set-Up | Advisory",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Associate Director for Marketing and Business Development",
+   "from": "free-scan-wave-corpora/S13-092/corpus.json",
+   "main": "sales_representative",
+   "expected": "marketing_manager"
+  },
+  {
+   "title": "Director of Business Development",
+   "from": "free-scan-wave-corpora/S13-092/corpus.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Python Team Lead - AI & Automation",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "engineering_manager",
+   "expected": "engineering_manager"
+  },
+  {
+   "title": " Vice President of Sales, West",
+   "from": "free-scan-wave-corpora/review-_source/postings.json",
+   "main": "sales_representative",
+   "expected": null,
+   "posting": "ashby:radai:5e23c415-b9bb-470b-a3ae-64b40a503930"
+  },
+  {
+   "title": "Assistant Director of Sales",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Assoc Director, Sales",
+   "from": "free-scan-wave-corpora/S13-092/corpus.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Associate Director - Sales Incentive Plan (SIP) Strategy & Execution Lead",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Associate Director, Sales Training - Hematology/Oncology",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Associate Director, Sales for Packaging Accounts",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Asst. Director of Sales (Corporate)",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Asst. Director of Sales (Group&Event)",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Business Development & Partnerships Director",
+   "from": "free-scan-wave-corpora/review-_source/postings.json",
+   "main": "sales_representative",
+   "expected": null,
+   "posting": "lever:wintermute-trading:bb850148-6459-4fa1-9ce8-07bf53036804"
+  },
+  {
+   "title": "Business Development & Partnerships — Manager/Director",
+   "from": "free-scan-wave-corpora/review-_source/postings.json",
+   "main": "sales_representative",
+   "expected": null,
+   "posting": "lever:wintermute-trading:4061bae9-2cde-4047-8fc2-eae2fb24c070"
+  },
+  {
+   "title": "Director Sales",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Director of Sales & Marketing-B",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "marketing_manager",
+   "expected": "marketing_manager"
+  },
+  {
+   "title": "Director of Sales &amp; Partnerships",
+   "from": "free-scan-wave-corpora/S13-092/corpus.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Director of Sales - Portuguese-Speaking  - London, UK",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Director of Sales - Spanish -Speaking  - London, UK",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Director of Sales and Marketing",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "marketing_manager",
+   "expected": "marketing_manager"
+  },
+  {
+   "title": "Director, Enterprise Sales (EMEA)",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Director, Fidelity Digital Assets®, International Sales",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Director, Global Field Sales Operations",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Director, Liberty Business - Sales & Commercial Growth",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Director, Sales Engineering",
+   "from": "free-scan-wave-corpora/review-_source/postings.json",
+   "main": "sales_representative",
+   "expected": null,
+   "posting": "lever:paralleldomain:2c35a3e1-d57a-48e8-9c83-d67d6ef006f9"
+  },
+  {
+   "title": "Director, Sales Force Effectiveness",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Enterprise Account Director - New Business Sales - Strategic Accounts",
+   "from": "free-scan-wave-corpora/review-_source/postings.json",
+   "main": "sales_representative",
+   "expected": null,
+   "posting": "lever:modeln:424cfd09-3067-42c8-9a9f-9058d58d519a"
+  },
+  {
+   "title": "Executive Director, Immunology Sales",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Executive Vice President, US Sales",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Head - Solutions and Pre-Sales",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Head of Digital Sales B2B (w/m/d)",
+   "from": "free-scan-wave-corpora/review-_source/postings.json",
+   "main": "sales_representative",
+   "expected": null,
+   "posting": "personio:outdooractive:2815121"
+  },
+  {
+   "title": "Head of Sales (m/f/x)",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Head of Sales - Uzbekistan",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Head of Sales – Verteidigung &amp; Sicherheitsbehörden (all genders)",
+   "from": "free-scan-wave-corpora/S13-092/corpus.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Industrial Tech Co-Founder / Head of Sales (100 % remote) (m/f/d)",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "MedTech Co-Founder / Head of Sales (100 % remote) (m/f/d)",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "OEM Enterprise Sales Director",
+   "from": "free-scan-wave-corpora/review-_source/postings.json",
+   "main": "sales_representative",
+   "expected": null,
+   "posting": "lever:paralleldomain:3205411e-ba76-4066-aa6c-f5e7996a3afc"
+  },
+  {
+   "title": "Provider Sales VP",
+   "from": "free-scan-wave-corpora/review-_source/postings.json",
+   "main": "sales_representative",
+   "expected": null,
+   "posting": "greenhouse:garnerhealth:6217270004"
+  },
+  {
+   "title": "Sales & Marketing Director, Brazil",
+   "from": "model-queries-2026-11.json",
+   "main": "marketing_manager",
+   "expected": "marketing_manager"
+  },
+  {
+   "title": "Sales Associate Director Swiss/Austria",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Sales Director - Northeast",
+   "from": "free-scan-wave-corpora/review-_source/postings.json",
+   "main": "sales_representative",
+   "expected": null,
+   "posting": "greenhouse:endorlabs:4744158005"
+  },
+  {
+   "title": "Sales Director EMEA (gn)",
+   "from": "free-scan-wave-corpora/review-_source/postings.json",
+   "main": "sales_representative",
+   "expected": null,
+   "posting": "personio:zim-aircraft-seating-gmbh:2735591"
+  },
+  {
+   "title": "Sales Director France",
+   "from": "free-scan-wave-corpora/review-_source/postings.json",
+   "main": "sales_representative",
+   "expected": null,
+   "posting": "personio:tsc-life:2740072"
+  },
+  {
+   "title": "Sales Director, Software Services (U.S Only)",
+   "from": "free-scan-wave-corpora/review-_source/postings.json",
+   "main": "sales_representative",
+   "expected": null,
+   "posting": "recruitee:allshoretalent:2761686"
+  },
+  {
+   "title": "Supply Chain Co-Founder / Head of Sales (100 % remote) (m/f/d)",
+   "from": "free-scan-wave-corpora/review-_source/titles.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Vice President, Sales",
+   "from": "free-scan-wave-corpora/S13-092/corpus.json",
+   "main": "sales_representative",
+   "expected": null
+  },
+  {
+   "title": "Vice President, Sales (Hunter, Revenue Cycle) - REMOTE",
+   "from": "free-scan-wave-corpora/review-_source/postings.json",
+   "main": "sales_representative",
+   "expected": null,
+   "posting": "lever:enablecomp:17aba49a-a00d-42c4-a285-49a512448235"
+  }
+ ]
+}

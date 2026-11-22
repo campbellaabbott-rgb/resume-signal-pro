@@ -8,10 +8,16 @@ interface TagListEditorProps {
   tags: string[];
   onChange: (tags: string[]) => void;
   placeholder?: string;
+  /**
+   * The input's accessible name: the heading of the section it sits under
+   * (NB-45). A placeholder is no name; it is gone once the reader types.
+   * The builder passes it for every list it mounts.
+   */
+  label?: string;
   className?: string;
 }
 
-export function TagListEditor({ tags, onChange, placeholder, className }: TagListEditorProps) {
+export function TagListEditor({ tags, onChange, placeholder, label, className }: TagListEditorProps) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState("");
 
@@ -45,8 +51,13 @@ export function TagListEditor({ tags, onChange, placeholder, className }: TagLis
             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium"
           >
             {tag}
-            <button onClick={() => removeTag(tag)} className="hover:text-destructive transition-colors">
-              <X className="w-3 h-3" />
+            <button
+              type="button"
+              onClick={() => removeTag(tag)}
+              aria-label={t("builderPage.removeTag", { tag })}
+              className="hover:text-destructive transition-colors"
+            >
+              <X className="w-3 h-3" aria-hidden="true" />
             </button>
           </span>
         ))}
@@ -57,6 +68,7 @@ export function TagListEditor({ tags, onChange, placeholder, className }: TagLis
         onKeyDown={handleKeyDown}
         onBlur={commitDraft}
         placeholder={placeholder || t("resumeBuilder.tagList.typeToAdd")}
+        aria-label={label}
         className="h-9"
       />
     </div>

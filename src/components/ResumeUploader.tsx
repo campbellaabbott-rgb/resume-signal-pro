@@ -1134,6 +1134,8 @@ export function ResumeUploader({
                             <span className="text-xs text-success/70">{selectedJob.company}</span>
                           </div>
                           <button
+                            type="button"
+                            aria-label={t('freeScanPage.a11y.removeJob')}
                             onClick={() => {
                               if (parsedJobs.length > 1) {
                                 setSelectedJob(null);
@@ -1144,7 +1146,7 @@ export function ResumeUploader({
                             }}
                             className="p-1 hover:bg-success/10 rounded-lg transition-colors"
                           >
-                            <X className="w-3 h-3 text-success" />
+                            <X className="w-3 h-3 text-success" aria-hidden="true" />
                           </button>
                         </div>
                         {parsedJobs.length > 1 && (
@@ -1159,10 +1161,12 @@ export function ResumeUploader({
                         <Table2 className="w-4 h-4 text-success shrink-0" />
                         <span className="text-sm text-success truncate">{jobDescriptionFile.name}</span>
                         <button
+                          type="button"
                           onClick={handleCancelJobSelection}
+                          aria-label={t('freeScanPage.a11y.removeSpreadsheet')}
                           className="ml-auto p-1 hover:bg-success/10 rounded-lg transition-colors"
                         >
-                          <X className="w-3 h-3 text-success" />
+                          <X className="w-3 h-3 text-success" aria-hidden="true" />
                         </button>
                       </div>
                     ) : parsedJobs.length === 0 && !jobDescriptionFile ? (
@@ -1235,6 +1239,8 @@ export function ResumeUploader({
                             <span className="text-xs text-success/70">{selectedJob.company}</span>
                           </div>
                           <button
+                            type="button"
+                            aria-label={t('freeScanPage.a11y.removeJob')}
                             onClick={() => {
                               if (parsedJobs.length > 1) {
                                 setSelectedJob(null);
@@ -1245,7 +1251,7 @@ export function ResumeUploader({
                             }}
                             className="p-1 hover:bg-success/10 rounded-lg transition-colors"
                           >
-                            <X className="w-3 h-3 text-success" />
+                            <X className="w-3 h-3 text-success" aria-hidden="true" />
                           </button>
                         </div>
                         {parsedJobs.length > 1 && (
@@ -1265,6 +1271,7 @@ export function ResumeUploader({
                             value={googleSheetsUrl}
                             onChange={(e) => setGoogleSheetsUrl(e.target.value)}
                             placeholder={t('uploader.gsheetsUrlPlaceholder')}
+                            aria-label={t('uploader.modeTabs.googleSheets')}
                             className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-success/50 focus:border-success/50 text-sm transition-all"
                             disabled={isLoadingGoogleSheet}
                           />
@@ -1311,10 +1318,12 @@ export function ResumeUploader({
                     <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
                     <span className="text-sm text-success">{t('uploader.jdAdded')}</span>
                     <button
+                      type="button"
                       onClick={() => setLocalJobDescriptionText("")}
+                      aria-label={t('freeScanPage.a11y.clearPosting')}
                       className="ml-auto p-1 hover:bg-success/10 rounded-lg transition-colors"
                     >
-                      <X className="w-3 h-3 text-success" />
+                      <X className="w-3 h-3 text-success" aria-hidden="true" />
                     </button>
                   </div>
                 )}
@@ -1393,13 +1402,15 @@ export function ResumeUploader({
                         <span className="text-sm text-success truncate max-w-[200px]">{linkedInFile.name}</span>
                         <span className="text-sm text-success">({linkedInText.length.toLocaleString(i18n.language)} {t('uploader.resume.chars')})</span>
                         <button
+                          type="button"
                           onClick={() => {
                             setLinkedInFile(null);
                             onLinkedInTextChange?.("");
                           }}
+                          aria-label={t('freeScanPage.a11y.removeProfilePdf')}
                           className="ml-auto p-1 hover:bg-success/10 rounded-lg transition-colors"
                         >
-                          <X className="w-3 h-3 text-success" />
+                          <X className="w-3 h-3 text-success" aria-hidden="true" />
                         </button>
                       </div>
                     ) : (

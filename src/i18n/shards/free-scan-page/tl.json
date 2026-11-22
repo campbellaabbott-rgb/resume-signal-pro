@@ -2,7 +2,12 @@
   "freeScanPage": {
     "a11y": {
       "resumeText": "Text ng iyong résumé",
-      "emailAddress": "Iyong email address"
+      "emailAddress": "Iyong email address",
+      "closeIndustryList": "Isara ang listahan ng mga industriya",
+      "removeJob": "Alisin ang napiling trabaho",
+      "removeSpreadsheet": "Alisin ang spreadsheet na ito",
+      "clearPosting": "Burahin ang job posting",
+      "removeProfilePdf": "Alisin ang PDF ng profile na ito"
     },
     "jobUrl": {
       "truncated": "Mas mahaba ang posting na ito kaysa sa kaya naming basahin, kaya ang unang bahagi lang nito ang nasa box."
@@ -170,7 +175,19 @@
       "levelDense": "Siksik",
       "levelModerate": "Katamtaman",
       "levelSparse": "Kaunti",
-      "learnAbout": "Alamin ang tungkol sa {{title}}"
+      "learnAbout": "Alamin ang tungkol sa {{title}}",
+      "section": {
+        "contact": "contact details",
+        "summary": "buod",
+        "experience": "karanasan",
+        "education": "edukasyon",
+        "skills": "mga kasanayan"
+      },
+      "contact": {
+        "email": "isang email address",
+        "phone": "isang numero ng telepono",
+        "linkedIn": "isang LinkedIn profile"
+      }
     },
     "keywordImpact": {
       "critical": "Kailangang-kailangan",
@@ -222,7 +239,17 @@
     },
     "report": {
       "scoreBand": "Ang score na {{score}} ay nasa modeling band na {{low}}–{{high}}. Sinasaklaw ng band ang aming rule-based na kalkulasyon at ang tantiya ng AI: ang iisang eksaktong numero ay mag-aangkin ng higit na katumpakan kaysa sa totoo.",
-      "preparing": "Inihahanda ang iyong report…"
+      "preparing": "Inihahanda ang iyong report…",
+      "skillsFreshness": "Gaano kasariwa ang iyong mga kasanayan",
+      "careerTrajectory": "Ang landas ng iyong karera",
+      "levelKeywords": "Mga keyword na inaasahan sa antas mo",
+      "employmentTimeline": "Timeline ng iyong karanasan sa trabaho",
+      "gapFound": "Isang puwang sa pagitan ng dalawang tungkulin",
+      "breakdown": "Saan binubuo ang score",
+      "breakdownKeywords": "Mga keyword",
+      "breakdownFormat": "Format",
+      "breakdownQuantification": "Mga numero sa iyong mga bullet",
+      "estImpact": "Tinatayang epekto: {{impact}}"
     },
     "market": {
       "title": "Market intelligence: {{country}}",
@@ -299,6 +326,35 @@
         "garbled": "magulong character",
         "noSections": "walang standard na seksyon ng résumé"
       }
+    },
+    "fallback": {
+      "automated_review_only": "Awtomatikong pagsusuri lang ng format: hindi available ang pagsusuri ng AI para sa scan na ito.",
+      "duty_not_result": "Isang bullet ang naglalarawan ng tungkulin, hindi ng resulta",
+      "add_numbers": "Lagyan ng numero ang mga bullet na wala nito: ito ang pinakamabilis na paraan para tumaas ang score",
+      "rewrite_passive_openers": "Isulat muli ang mga bullet na nagsisimula sa pariralang passive",
+      "number_top_three": "Lagyan ng tiyak na numero ang bawat isa sa tatlo mong pangunahing bullet",
+      "numberTopThreeWhy": "Ang nasukat na resulta ay isa sa pinakahinahanap ng mga nagsasala ng aplikante",
+      "numberTopThreeImpact": "+5 hanggang 8 puntos",
+      "startsWith": "nagsisimula sa \"{{opener}}\""
+    },
+    "insights": {
+      "lengthExact_one": "Inirerekomendang haba ng résumé para sa market na ito: {{count}} pahina",
+      "lengthExact_other": "Inirerekomendang haba ng résumé para sa market na ito: {{count}} pahina",
+      "lengthRange": "Inirerekomendang haba ng résumé para sa market na ito: {{min}} hanggang {{max}} pahina"
+    },
+    "partial": {
+      "noPostingComparison": "Hindi ito ikinumpara sa job posting na idinagdag mo: mag-scan muli para itapat ito sa posting."
+    },
+    "since": {
+      "title": "Mula sa huli mong scan: {{before}} → {{after}}",
+      "flags": "Mga red flag {{before}} → {{after}}.",
+      "up": "Mas mataas kaysa noong huli. Ipinapaliwanag ng mga natuklasan sa ibaba ang bawat punto.",
+      "down": "Mas mababa kaysa noong huli, kadalasan dahil sa ibang target o pinaikling nilalaman. Ipinapaliwanag ng mga natuklasan sa ibaba ang bawat punto.",
+      "same": "Walang pagbabago sa score. Ipinapakita ng mga natuklasan sa ibaba kung ano ang magpapagalaw dito."
+    },
+    "detection": {
+      "title": "Awtomatikong natukoy ang industriya — tama ba ito?",
+      "body": "Binasa namin ang resume na ito bilang {{industry}} mula sa kaunting palatandaan. Kung mali iyon, piliin ang iyong larangan sa industry selector sa itaas: agad na sumusunod dito ang mga listahan ng keyword, ang mga tip at ang pagsasanay sa interview sa report na ito. Ang score, ang mga natuklasan at ang payo sa format ay mula sa scan na ito, isinulat para sa {{industry}}; mag-scan muli at isusulat ang mga ito para sa larangang pinili mo."
     }
   }
 }

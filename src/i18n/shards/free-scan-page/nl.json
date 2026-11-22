@@ -2,7 +2,12 @@
   "freeScanPage": {
     "a11y": {
       "resumeText": "Tekst van je cv",
-      "emailAddress": "Je e-mailadres"
+      "emailAddress": "Je e-mailadres",
+      "closeIndustryList": "Lijst met sectoren sluiten",
+      "removeJob": "Gekozen vacature verwijderen",
+      "removeSpreadsheet": "Dit rekenblad verwijderen",
+      "clearPosting": "Vacaturetekst wissen",
+      "removeProfilePdf": "Deze profiel-pdf verwijderen"
     },
     "jobUrl": {
       "truncated": "Deze vacature was langer dan we kunnen lezen, dus alleen het eerste deel staat in het vak."
@@ -170,7 +175,19 @@
       "levelDense": "Hoog",
       "levelModerate": "Gemiddeld",
       "levelSparse": "Laag",
-      "learnAbout": "Meer over {{title}}"
+      "learnAbout": "Meer over {{title}}",
+      "section": {
+        "contact": "contactgegevens",
+        "summary": "profiel",
+        "experience": "werkervaring",
+        "education": "opleiding",
+        "skills": "vaardigheden"
+      },
+      "contact": {
+        "email": "een e-mailadres",
+        "phone": "een telefoonnummer",
+        "linkedIn": "een LinkedIn-profiel"
+      }
     },
     "keywordImpact": {
       "critical": "Onmisbaar",
@@ -222,7 +239,17 @@
     },
     "report": {
       "scoreBand": "Score {{score}} valt in een modelbandbreedte van {{low}}–{{high}}. De bandbreedte loopt van onze regelgebaseerde berekening tot de AI-schatting: één exact getal zou meer precisie suggereren dan er is.",
-      "preparing": "Je rapport wordt voorbereid…"
+      "preparing": "Je rapport wordt voorbereid…",
+      "skillsFreshness": "Hoe actueel je vaardigheden zijn",
+      "careerTrajectory": "Je loopbaan",
+      "levelKeywords": "Verwachte trefwoorden voor jouw niveau",
+      "employmentTimeline": "Tijdlijn van je werkervaring",
+      "gapFound": "Een periode tussen twee functies",
+      "breakdown": "Waaruit de score bestaat",
+      "breakdownKeywords": "Trefwoorden",
+      "breakdownFormat": "Opmaak",
+      "breakdownQuantification": "Cijfers in je opsommingspunten",
+      "estImpact": "Geschat effect: {{impact}}"
     },
     "market": {
       "title": "Marktinformatie: {{country}}",
@@ -299,6 +326,35 @@
         "garbled": "onleesbare tekens",
         "noSections": "geen standaard cv-secties"
       }
+    },
+    "fallback": {
+      "automated_review_only": "Alleen een automatische controle van de opmaak: de AI-beoordeling was voor deze scan niet beschikbaar.",
+      "duty_not_result": "Een opsommingspunt noemt een taak, geen resultaat",
+      "add_numbers": "Zet cijfers in de opsommingspunten die er geen hebben: zo verhoog je de score het snelst",
+      "rewrite_passive_openers": "Herschrijf de opsommingspunten die met een passieve formulering beginnen",
+      "number_top_three": "Zet een concreet cijfer in elk van je drie belangrijkste opsommingspunten",
+      "numberTopThreeWhy": "Een meetbaar resultaat is een van de dingen waar selecteurs het sterkst op letten",
+      "numberTopThreeImpact": "+5 tot 8 punten",
+      "startsWith": "begint met ‘{{opener}}’"
+    },
+    "insights": {
+      "lengthExact_one": "Aanbevolen lengte van je cv voor deze markt: {{count}} pagina",
+      "lengthExact_other": "Aanbevolen lengte van je cv voor deze markt: {{count}} pagina's",
+      "lengthRange": "Aanbevolen lengte van je cv voor deze markt: {{min}} tot {{max}} pagina's"
+    },
+    "partial": {
+      "noPostingComparison": "Het is niet vergeleken met de vacature die je hebt toegevoegd: scan opnieuw om het met de vacature te vergelijken."
+    },
+    "since": {
+      "title": "Sinds je vorige scan: {{before}} → {{after}}",
+      "flags": "Waarschuwingssignalen {{before}} → {{after}}.",
+      "up": "Hoger dan de vorige keer. De bevindingen hieronder verklaren elk punt.",
+      "down": "Lager dan de vorige keer, vaak door een ander doel of ingekorte inhoud. De bevindingen hieronder verklaren elk punt.",
+      "same": "De score is niet veranderd. De bevindingen hieronder laten zien wat hem zou veranderen."
+    },
+    "detection": {
+      "title": "Sector automatisch herkend: klopt dit?",
+      "body": "We hebben dit cv op basis van weinig signalen gelezen als {{industry}}. Klopt dat niet, kies dan je vakgebied in de sectorkeuze hierboven: de trefwoordlijsten, de tips en de sollicitatietraining in dit rapport volgen je keuze meteen. De score, de bevindingen en het opmaakadvies zijn van deze scan en geschreven voor {{industry}}; scan opnieuw en ze worden geschreven voor het vakgebied dat je koos."
     }
   }
 }

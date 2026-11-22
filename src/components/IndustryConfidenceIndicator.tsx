@@ -420,14 +420,16 @@ export function IndustryConfidenceIndicator({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium text-foreground">{t("industryConfidence.selectCorrect")}</p>
-                <button 
+                <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowCorrection(false);
                   }}
+                  aria-label={t("freeScanPage.a11y.closeIndustryList")}
                   className="p-1 text-muted-foreground hover:text-foreground"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-4 h-4" aria-hidden="true" />
                 </button>
               </div>
               

@@ -28,6 +28,7 @@
     "removeEntry": "Quitar esta entrada",
     "removeBullet": "Quitar este punto",
     "bullet": "Punto {{num}}",
-    "dismiss": "Ocultar"
+    "dismiss": "Ocultar",
+    "removeTag": "Quitar {{tag}}"
   }
 }

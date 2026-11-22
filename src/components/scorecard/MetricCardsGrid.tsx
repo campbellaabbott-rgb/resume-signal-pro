@@ -230,7 +230,8 @@ interface MetricCardsGridProps {
   resumeLength?: ResumeLength;
   wordCount?: WordCount;
   sectionCheck: SectionCheck;
-  contactInfo: ContactInfo;
+  /** Null when the scan read no contact facts (SCAN-M1): the card is not shown. */
+  contactInfo: ContactInfo | null;
   readabilityScore?: ReadabilityScore;
   bulletImpactScore: BulletImpactScore;
   keywordDensity?: KeywordDensity;
@@ -263,8 +264,24 @@ export function MetricCardsGrid({
   // (src/lib/score-bands.ts, S13-019), never thresholds of this card's own.
   const atsTone = scoreTone(atsScoreEstimate);
 
-  const sectionPresent = [sectionCheck.hasContact, sectionCheck.hasSummary, sectionCheck.hasExperience, sectionCheck.hasEducation, sectionCheck.hasSkills].filter(Boolean).length;
-  const contactPresent = [contactInfo.hasEmail, contactInfo.hasPhone, contactInfo.hasLinkedIn].filter(Boolean).length;
+  // WHAT IS MISSING COMES FROM THE SAME BOOLEANS AS THE COUNT (SCAN-02). The
+  // scan's own missingSections and missingItems lists can be empty, or in
+  // English, beside a false: the card ticked "all present" next to 2/3 or
+  // 3/5. Each part the count leaves out is named in the reader's language.
+  const SECTION_PARTS = [
+    ["contact", sectionCheck.hasContact],
+    ["summary", sectionCheck.hasSummary],
+    ["experience", sectionCheck.hasExperience],
+    ["education", sectionCheck.hasEducation],
+    ["skills", sectionCheck.hasSkills],
+  ] as const;
+  const missingSections = SECTION_PARTS.filter(([, has]) => !has).map(([part]) => t(`freeScanPage.metric.section.${part}`));
+  const sectionPresent = SECTION_PARTS.length - missingSections.length;
+  const CONTACT_PARTS = contactInfo
+    ? ([["email", contactInfo.hasEmail], ["phone", contactInfo.hasPhone], ["linkedIn", contactInfo.hasLinkedIn]] as const)
+    : [];
+  const missingContact = CONTACT_PARTS.filter(([, has]) => !has).map(([part]) => t(`freeScanPage.metric.contact.${part}`));
+  const contactPresent = CONTACT_PARTS.length - missingContact.length;
 
   const densityScore = keywordDensity ? (keywordDensity.level === "dense" ? 90 : keywordDensity.level === "moderate" ? 55 : 25) : 0;
   const densityStatus: Status = keywordDensity ? (keywordDensity.level === "dense" ? "success" : keywordDensity.level === "moderate" ? "warning" : "destructive") : "muted";
@@ -334,19 +351,19 @@ export function MetricCardsGrid({
       label: t('freeScan.sections'),
       tooltipKey: "sections",
       value: `${sectionPresent}/5`,
-      subtext: sectionCheck.missingSections.length === 0 ? `✓ ${t("freeScanPage.metric.sectionsAll")}` : `⚠ ${t("freeScanPage.metric.sectionsAdd", { section: sectionCheck.missingSections[0] })}`,
+      subtext: missingSections.length === 0 ? `✓ ${t("freeScanPage.metric.sectionsAll")}` : `⚠ ${t("freeScanPage.metric.sectionsAdd", { section: missingSections.join(", ") })}`,
       status: sectionPresent === 5 ? "success" : sectionPresent >= 3 ? "warning" : "destructive",
       progress: (sectionPresent / 5) * 100,
     },
-    {
+    ...(contactInfo ? [{
       icon: Phone,
       label: t('freeScan.contact'),
       tooltipKey: "contact",
       value: `${contactPresent}/3`,
-      subtext: contactInfo.missingItems.length === 0 ? `✓ ${t("freeScanPage.metric.contactAll")}` : `⚠ ${t("freeScanPage.metric.contactAdd", { item: contactInfo.missingItems[0] })}`,
-      status: contactPresent === 3 ? "success" : contactPresent >= 2 ? "warning" : "destructive",
+      subtext: missingContact.length === 0 ? `✓ ${t("freeScanPage.metric.contactAll")}` : `⚠ ${t("freeScanPage.metric.contactAdd", { item: missingContact.join(", ") })}`,
+      status: (contactPresent === 3 ? "success" : contactPresent >= 2 ? "warning" : "destructive") as Status,
       progress: (contactPresent / 3) * 100,
-    },
+    }] : []),
   ];
 
   const advancedCards: MetricCardProps[] = [

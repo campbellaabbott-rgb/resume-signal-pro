@@ -27,6 +27,7 @@
     "removeEntry": "Alisin ang entry na ito",
     "removeBullet": "Alisin ang bullet na ito",
     "bullet": "Bullet {{num}}",
-    "dismiss": "Itago"
+    "dismiss": "Itago",
+    "removeTag": "Alisin ang {{tag}}"
   }
 }

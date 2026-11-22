@@ -13,6 +13,15 @@
  * here in German, and each component's source is held to carry none of them
  * as text. The recheck added the findings index's items, which sat in
  * English under the translated heading.
+ *
+ * S14X-057 moved the last six English headings of the report's deeper cards
+ * (the skills, career, level-keywords and timeline cards, the gap line and
+ * the score's three-part breakdown, with its labels) to freeScanPage keys;
+ * a French render holds none of them. SCAN-05: the findings index is handed
+ * the scan's quantification object ({ score: 12 }), as the scanner sends it.
+ * The old `20 as never` cast handed it a bare number, which the old code
+ * compared and the scan never sends, so the test passed over a finding no
+ * real report ever raised.
  */
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@testing-library/react";
@@ -69,6 +78,13 @@ afterEach(() => cleanup());
 afterAll(async () => { await i18n.changeLanguage("en"); });
 
 const english = (text: string, list: string[]) => list.filter((s) => text.includes(s));
+// The deeper cards' headings and the breakdown's English label (S14X-057).
+// "Format" and "Quantification" are French words too, so the French render
+// is held to the seven that are English alone.
+const DEEP_ENGLISH = [
+  "Skills Freshness", "Career Trajectory", "Keywords Expected at Your Level", "Employment Timeline",
+  "Employment gap detected", "Score Breakdown", "Keyword Match",
+];
 const FINDINGS_ENGLISH = [
   "Resume text may not have extracted correctly", "Extraction quality is imperfect", "No email address detected",
   "No phone number detected", "missing — see field-specific checks", "graded D or below", "rewrites provided",
@@ -110,7 +126,7 @@ describe("rendered in German", () => {
           sectionCheck={{ hasContact: true, hasSummary: true, hasExperience: true, hasEducation: true, hasSkills: true } as never}
           contactInfo={{ hasEmail: false, hasPhone: false, hasLinkedIn: false } as never}
           parseQuality={{ verdict: "poor", wordCount: 90, issues: [] }}
-          quantificationScore={20 as never}
+          quantificationScore={{ score: 12, verdict: "weak", tip: "" }}
           weakestBullets={[
             { original: "Responsible for patients", grade: "D", issues: [], rewrite: null },
             { original: "Helped with charts", grade: "F", issues: [], rewrite: null },
@@ -167,9 +183,44 @@ describe("rendered in German", () => {
   });
 });
 
+describe("rendered in French", () => {
+  it("the deeper cards and the score breakdown", async () => {
+    const fr = JSON.parse(readFileSync(resolve(LOCALES, "fr.json"), "utf8"));
+    const frShard = JSON.parse(readFileSync(resolve(ROOT, "src/i18n/shards/free-scan-page/fr.json"), "utf8"));
+    i18n.addResourceBundle("fr", "translation", fr, true, true);
+    i18n.addResourceBundle("fr", "translation", frShard, true, true);
+    await i18n.changeLanguage("fr");
+    try {
+      const { container } = render(
+        <MemoryRouter>
+          <FreeKeywordResults
+            industry="technology" atsScoreEstimate={61} formatGrade="B" formatIssue="ok" resumeLength={"good" as never}
+            redFlags={[]} keywords={[]}
+            sectionCheck={{ hasContact: true, hasSummary: true, hasExperience: true, hasEducation: true, hasSkills: true } as never}
+            skillsRecency={{ agingSkills: ["jQuery"], freshSkills: ["TypeScript"], freshnessScore: 60, hasAgingSignals: true }}
+            careerTrajectory={{ trajectory: "upward", promotionCount: 1, industryTransitionDetected: false, fromIndustry: null, progressionSummary: "x" }}
+            competitiveGap={{ missingHighFrequency: ["Kubernetes"], presentHighFrequency: ["React"], gapScore: 50 }}
+            resumeTimeline={{ totalExperienceMonths: 90, hasSignificantGap: true, hasShortTenures: false, gapPeriods: [{ afterTitle: "Développeur", monthsGap: 9 }], averageTenureMonths: 30, rolesDetected: 3, summary: "x" }}
+            scoreBreakdown={{ keywords: 41, format: 80, quantification: 25 }}
+            onGetFullAnalysis={vi.fn()}
+          />
+        </MemoryRouter>,
+      );
+      const text = container.textContent ?? "";
+      expect(english(text, DEEP_ENGLISH)).toEqual([]);
+      const report = frShard.freeScanPage.report;
+      for (const k of ["skillsFreshness", "careerTrajectory", "levelKeywords", "employmentTimeline", "gapFound", "breakdown", "breakdownKeywords", "breakdownQuantification"]) {
+        expect(text, k).toContain(report[k]);
+      }
+    } finally {
+      await i18n.changeLanguage("de");
+    }
+  });
+});
+
 describe("in the source", () => {
   const SITES: Array<[string, string[]]> = [
-    ["src/components/FreeKeywordResults.tsx", ["We read this as:", "Corrections retrain our detection", ...FINDINGS_ENGLISH]],
+    ["src/components/FreeKeywordResults.tsx", ["We read this as:", "Corrections retrain our detection", ...FINDINGS_ENGLISH, ...DEEP_ENGLISH]],
     ["src/components/IndustryConfidenceIndicator.tsx", ["Is this right?"]],
     ["src/components/ReportInsightCards.tsx", ["How the big ATS platforms read this resume", "Findings at a glance"]],
     ["src/components/scorecard/MetricCardsGrid.tsx", ["Primary Scores"]],

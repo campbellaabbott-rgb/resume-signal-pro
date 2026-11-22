@@ -817,6 +817,7 @@ export default function ResumeBuilder() {
                   tags={resume.skills}
                   onChange={(skills) => setResume({ ...resume, skills })}
                   placeholder={t("resumeBuilder.placeholder.skill")}
+                  label={t("resumeBuilder.section.skills")}
                 />
               </section>
 
@@ -826,6 +827,7 @@ export default function ResumeBuilder() {
                   tags={resume.certifications}
                   onChange={(certifications) => setResume({ ...resume, certifications })}
                   placeholder={t("resumeBuilder.placeholder.certification")}
+                  label={t("resumeBuilder.section.certifications")}
                 />
               </section>
             </fieldset>
