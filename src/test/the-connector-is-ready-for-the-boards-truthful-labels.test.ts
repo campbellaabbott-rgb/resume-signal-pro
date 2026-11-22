@@ -12,8 +12,10 @@
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { bootKeylessMcp, type KeylessMcp } from "./helpers/keyless-mcp";
+import { ALLOWED, RecordingDb, callApi, loadPublicApi, useDb, type Fetched } from "./helpers/public-api-harness";
+import type { EdgeHandler } from "./helpers/edge-harness";
 
 vi.setConfig({ testTimeout: 30_000, hookTimeout: 120_000 });
 
@@ -66,5 +68,44 @@ describe("matchNote fires only when every row says it matched somewhere other th
     page = [row(1), row(2)];
     const r = await search({ location: "Dublin" });
     expect(r).not.toHaveProperty("matchNote");
+  });
+});
+
+describe("/v1 engine=ranked passes the employer label through", () => {
+  let handler: EdgeHandler;
+  let fetched: Fetched[];
+  let apiGlobals: { Deno: unknown; fetch: unknown };
+  let boardAnswer: (body: Record<string, unknown>) => Record<string, unknown> = () => ({ jobs: [], total: 0, hasMore: false });
+  let db: RecordingDb;
+  beforeAll(async () => {
+    ({ handler, fetched } = await loadPublicApi((f) => {
+      if (f.url.endsWith("/functions/v1/job-board")) return new Response(JSON.stringify(boardAnswer(f.body as Record<string, unknown>)), { status: 200 });
+      if (f.url.endsWith("/functions/v1/job-fit")) return new Response(JSON.stringify({ fits: {}, matched: {}, missing: {} }), { status: 200 });
+      return new Response("{}", { status: 404 });
+    }));
+    const g = globalThis as Record<string, unknown>;
+    apiGlobals = { Deno: g.Deno, fetch: g.fetch };
+  }, 120_000);
+  beforeEach(() => {
+    // The connector's harness installs its own globals; this block's handler reads the API's.
+    Object.assign(globalThis as Record<string, unknown>, apiGlobals);
+    fetched.length = 0;
+    db = new RecordingDb();
+    db.rpcs.api_key_check = () => ({ data: { ...ALLOWED, key_tier: "builder" }, error: null });
+    db.rpcs.v1_withheld_company_tokens = () => ({ data: [], error: null });
+    db.rpcs.api_key_fit_allowance = () => ({ data: [{ fa_user_id: null, fa_confirmed: true, fa_proven: false, fa_used: 3 }], error: null });
+    db.rpcs.api_key_fit_unscored = () => ({ data: true, error: null });
+    useDb(db);
+  });
+
+  it("a row labelled employer says match_scope employer, and total.note names the employer name and department", async () => {
+    boardAnswer = () => ({ jobs: [{ ...row(1, "employer"), token: "acme", company: "Acme", applyUrl: "https://x/1" }], total: 1, hasMore: false, titleTotal: 0, employerTotal: 1 });
+    const r = await callApi(handler, "/v1/jobs?engine=ranked&q=recruiter");
+    expect(r.status, JSON.stringify(r.body).slice(0, 200)).toBe(200);
+    expect((r.body.data as Array<{ match_scope: unknown }>)[0].match_scope).toBe("employer");
+    const total = r.body.total as { note: string; titleTotal?: number; employerTotal?: number };
+    expect(total.note).toMatch(/title, employer name or department matched/);
+    expect(total.note).not.toMatch(/value counts postings whose title matched;/);
+    expect(total).toMatchObject({ titleTotal: 0, employerTotal: 1 });
   });
 });

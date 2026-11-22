@@ -31,7 +31,8 @@ describe("the ranked engine is opt-in and paid", () => {
   });
 
   it("routes through the board engine, not a second implementation", () => {
-    expect(API).toMatch(/function board\(body: Record<string, unknown>\)/);
+    // (a refill read, lane fix/1121-connector-errors item 1, passes an abort signal)
+    expect(API).toMatch(/function board\(body: Record<string, unknown>(, signal\?: AbortSignal)?\)/);
     expect(API).toMatch(/functions\/v1\/job-board/);
     expect(API).toMatch(/action: "list", limit, offset, includeFacets: false/);
   });

@@ -15,8 +15,10 @@
  * network faked), and the pure filler with its clock and timers faked for the
  * bounds (no refill read after 3 s, none waited for past 6 s, never a third).
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { bootKeylessMcp, type KeylessMcp } from "./helpers/keyless-mcp";
+import { ALLOWED, RecordingDb, callApi, loadPublicApi, useDb, type Fetched } from "./helpers/public-api-harness";
+import type { EdgeHandler } from "./helpers/edge-harness";
 import {
   fillPage, countReadAllowed, totalWithoutWithheld,
   type BoardAnswer, type PageGate, type Row,
@@ -258,5 +260,105 @@ describe("the filler's bounds, with its clock faked", () => {
     expect(totalWithoutWithheld({ total: 30, relatedTotal: 50 }, { total: 5, relatedTotal: 8 })).toEqual({ total: 25, withheldTotal: 5, relatedTotal: 42 });
     expect(totalWithoutWithheld({ total: 30 }, { total: 5, relatedTotal: 8 })).toEqual({ total: 25, withheldTotal: 5 });
     expect(totalWithoutWithheld({ total: 30, relatedTotal: 50, relatedCapped: true }, { total: 5, relatedTotal: 8 })).toEqual({ total: 25, withheldTotal: 5 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// /v1: engine=ranked and POST /v1/fit refill the same way and make no count
+// read; the default engine and /v1/changes count only the rows they served.
+// ---------------------------------------------------------------------------
+
+describe("/v1 fills its proxied pages and counts only what it served", () => {
+  let handler: EdgeHandler;
+  let fetched: Fetched[];
+  let apiGlobals: { Deno: unknown; fetch: unknown };
+  let answer: (body: Record<string, unknown>) => BoardAnswer;
+  beforeAll(async () => {
+    ({ handler, fetched } = await loadPublicApi((f) => {
+      if (f.url.endsWith("/functions/v1/job-board")) return new Response(JSON.stringify(answer(f.body as Record<string, unknown>)), { status: 200 });
+      if (f.url.endsWith("/functions/v1/job-fit")) {
+        const ids = ((f.body as { ids?: string[] }).ids ?? []);
+        return new Response(JSON.stringify({ fits: Object.fromEntries(ids.map((id) => [id, 50])), matched: {}, missing: {} }), { status: 200 });
+      }
+      return new Response("{}", { status: 404 });
+    }));
+    const g = globalThis as Record<string, unknown>;
+    apiGlobals = { Deno: g.Deno, fetch: g.fetch };
+  }, 120_000);
+  let db: RecordingDb;
+  beforeEach(() => {
+    // The connector's harness above installs its own globals; this block's handler reads the API's.
+    Object.assign(globalThis as Record<string, unknown>, apiGlobals);
+    fetched.length = 0;
+    db = new RecordingDb();
+    db.rpcs.api_key_check = () => ({ data: { ...ALLOWED, key_tier: "builder" }, error: null });
+    db.rpcs.v1_withheld_company_tokens = () => ({ data: [], error: null });
+    db.rpcs.api_key_fit_allowance = () => ({ data: [{ fa_user_id: null, fa_confirmed: true, fa_proven: false, fa_used: 3 }], error: null });
+    db.rpcs.api_key_fit_unscored = () => ({ data: true, error: null });
+    useDb(db);
+  });
+  const boardBodies = () => fetched.filter((f) => f.url.endsWith("/functions/v1/job-board")).map((f) => f.body as Record<string, unknown>);
+
+  it("engine=ranked, limit 10, SmartRecruiters at 3, 5, 8, 9 and 12: ten rows, returned 10, nextOffset 15, two refill reads", async () => {
+    answer = exactBoard(pool([2, 4, 7, 8, 11]));
+    const r = await callApi(handler, "/v1/jobs?engine=ranked&q=manager&country=IT&limit=10");
+    expect(r.status, JSON.stringify(r.body).slice(0, 300)).toBe(200);
+    const data = r.body.data as Array<Record<string, unknown>>;
+    expect(data).toHaveLength(10);
+    expect(data.some((x) => x.source === "smartrecruiters")).toBe(false);
+    expect(r.body.page).toMatchObject({ returned: 10, nextOffset: 15, refillReads: 2, maxLimit: 100 });
+    const bodies = boardBodies();
+    expect(bodies.map((b) => [b.offset, b.limit])).toEqual([[0, 10], [10, 4], [14, 1]]);
+    for (const b of bodies.slice(1)) expect(b).toMatchObject({ q: "manager", country: "IT", noLog: true });
+    expect(bodies.some((b) => b.countOnly)).toBe(false);
+  });
+
+  it("engine=ranked: unlabelled federal rows dropped across the reads are summed in federalWithheld", async () => {
+    answer = exactBoard(pool([4], [1, 11]));
+    const r = await callApi(handler, "/v1/jobs?engine=ranked&q=manager&limit=10");
+    expect(r.status).toBe(200);
+    expect(r.body.data as unknown[]).toHaveLength(10);
+    expect((r.body.disclosures as { federalWithheld?: { count: number } }).federalWithheld?.count).toBe(2);
+    expect((r.body.page as { returned: number }).returned).toBe(10);
+  });
+
+  it("POST /v1/fit scores ten servable rows when the board has them", async () => {
+    answer = exactBoard(pool([2, 4, 7, 8, 11]));
+    const resumeText = "Operations manager with ten years running warehouses, budgets, hiring and teams across Italy. ".repeat(2);
+    const r = await callApi(handler, "/v1/fit", { method: "POST", body: { resumeText, q: "manager", limit: 10 } });
+    expect(r.status, JSON.stringify(r.body).slice(0, 300)).toBe(200);
+    const scored = fetched.filter((f) => f.url.endsWith("/functions/v1/job-fit")).flatMap((f) => (f.body as { ids: string[] }).ids);
+    expect(scored).toHaveLength(10);
+    expect(scored.some((id) => id.startsWith("smartrecruiters:"))).toBe(false);
+  });
+
+  it("/v1/jobs (default engine): a federal row whose who_may_apply is blank is left out, and returned counts the rows served; the cursor stays on the rows read", async () => {
+    const at = new Date(Date.now() - 3_600_000).toISOString();
+    db.tables.job_board_postings = [
+      { id: "greenhouse:acme:1", source: "greenhouse", company_token: "acme", company: "Acme", title: "Nurse", apply_url: "https://x/1", first_seen: at, effective_posted: at, missing_since: null },
+      { id: "usajobs:usajobs:2", source: "usajobs", company_token: "usajobs", company: "VA", title: "Nurse", apply_url: "https://x/2", first_seen: at, effective_posted: at, missing_since: null, who_may_apply: "  " },
+    ];
+    const r = await callApi(handler, "/v1/jobs?q=nurse&limit=2");
+    expect(r.status, JSON.stringify(r.body).slice(0, 300)).toBe(200);
+    expect((r.body.data as Array<{ id: string }>).map((x) => x.id)).toEqual(["greenhouse:acme:1"]);
+    const page = r.body.page as { returned: number; nextCursor: string | null };
+    expect(page.returned).toBe(1);
+    expect(page.nextCursor).not.toBeNull();
+    const cur = JSON.parse(Buffer.from(String(page.nextCursor).replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8")) as { id: string };
+    expect(cur.id).toBe("usajobs:usajobs:2");
+  });
+
+  it("/v1/changes: opened leaves the blank federal row out, and openedReturned counts the rows served", async () => {
+    const at = new Date(Date.now() - 3_600_000).toISOString();
+    db.tables.job_board_postings = [
+      { id: "greenhouse:acme:1", source: "greenhouse", company_token: "acme", company: "Acme", title: "Nurse", apply_url: "https://x/1", first_seen: at, effective_posted: at, missing_since: null },
+      { id: "usajobs:usajobs:2", source: "usajobs", company_token: "usajobs", company: "VA", title: "Nurse", apply_url: "https://x/2", first_seen: at, effective_posted: at, missing_since: null, who_may_apply: "  " },
+    ];
+    db.tables.job_board_closures = [];
+    const since = new Date(Date.now() - 86_400_000).toISOString();
+    const r = await callApi(handler, `/v1/changes?since=${encodeURIComponent(since)}`);
+    expect(r.status, JSON.stringify(r.body).slice(0, 300)).toBe(200);
+    expect((r.body.opened as Array<{ id: string }>).map((x) => x.id)).toEqual(["greenhouse:acme:1"]);
+    expect((r.body.page as { openedReturned: number }).openedReturned).toBe(1);
   });
 });

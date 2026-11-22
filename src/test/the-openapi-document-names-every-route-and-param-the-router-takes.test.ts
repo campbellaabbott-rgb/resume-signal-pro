@@ -52,6 +52,7 @@ import {
   DESCRIBED_FIT_FIELDS,
   DESCRIBED_PARAMS,
   DESCRIBED_ROUTES,
+  DOCUMENT_ROUTE,
   OPENAPI_PATH,
   UNDESCRIBED,
   documentedDomain,
@@ -292,6 +293,8 @@ type Router = {
   retryAfterCodes: Set<string>;
   /** Access-Control-Allow-Headers, lower-cased. */
   allowedRequestHeaders: string[];
+  /** The index names the document in its own `openapi` field (lane fix/1121-connector-errors, item 7b). */
+  indexNamesDocument: boolean;
   /** Every query parameter name the handlers read by name. */
   paramsRead: Set<string>;
   /** Names a job row may carry beside JOB_FIELDS: written by the router or last-verified.ts. */
@@ -340,9 +343,13 @@ function readRouter(indexSrc: string, lastVerifiedSrc: string): Router {
 
   // /v1/changes' two selects and what closed[] does to its rows.
   const changesBody = body("changes");
-  const selectOf = (table: string) =>
-    one(changesBody, new RegExp(`from\\("${table}"\\)\\s*\\.select\\("([^"]+)"\\)`), `${table} select in changes()`)[1].split(",").map((x) => x.trim());
-  const closedMap = one(changesBody, /closedRows\.map\(\(\{\s*([\w\s,]+?),\s*\.\.\.c\s*\}[^)]*\)\s*=>\s*\(\{\s*\.\.\.c,([\s\S]*?)\}\)\)/, "closed[] row map");
+  // A select is a literal or (lane fix/1121-connector-errors) a column-list constant the document is built from too.
+  const selectOf = (table: string) => {
+    const m = one(changesBody, new RegExp(`from\\("${table}"\\)\\s*\\.select\\((?:"([^"]+)"|([A-Z_]+))\\)`), `${table} select in changes()`);
+    return (m[1] ?? constString(code, m[2])).split(",").map((x) => x.trim());
+  };
+  // OD16 shapes each closure through v1Closure; the keys it adds are read the same way.
+  const closedMap = one(changesBody, /closedRows\.map\(\(\{\s*([\w\s,]+?),\s*\.\.\.c\s*\}[^)]*\)\s*=>\s*(?:v1Closure\(|\()\{\s*\.\.\.c,([\s\S]*?)\}\)\)/, "closed[] row map");
 
   // POST /v1/fit's body.
   const fitBody = body("fitResumeScored");
@@ -370,7 +377,7 @@ function readRouter(indexSrc: string, lastVerifiedSrc: string): Router {
     maxLimit: constNumber(code, "MAX_LIMIT"),
     maxLimitWithDescription: constNumber(code, "MAX_LIMIT_WITH_DESCRIPTION"),
     maxOffset: constNumber(code, "MAX_OFFSET"),
-    companiesDefaultLimit: Number(one(body("companies"), /limitAsked \|\| (\d+)\b/, "companies default limit")[1]),
+    companiesDefaultLimit: ((m) => (/^\d+$/.test(m[1]) ? Number(m[1]) : constNumber(code, m[1])))(one(body("companies"), /limitAsked \|\| (\d+|[A-Z_]+)\b/, "companies default limit")),
     freshWindowDays: constNumber(code, "FRESH_WINDOW_DAYS"),
     closuresMaxDaysFree: constNumber(code, "CLOSURES_MAX_DAYS_FREE"),
     changesMaxDaysPaid: constNumber(code, "CHANGES_MAX_DAYS_PAID"),
@@ -415,7 +422,8 @@ function readRouter(indexSrc: string, lastVerifiedSrc: string): Router {
   const tryClose = tryAt < 0 ? -1 : closerOf(cs, tryAt + 4);
   if (authAt < 0 || tryAt < 0 || !cs.startsWith("} catch (e)", tryClose)) throw new Error("the router's key check or its try/catch moved");
 
-  const norm = (p: string) => (p === "/" ? "/v1" : p.replace(/\/+$/, ""));
+  // "/" is the index and "/openapi.json" the document, each served beside its /v1 name.
+  const norm = (p: string) => (p === "/" ? "/v1" : p === "/openapi.json" ? OPENAPI_PATH : p.replace(/\/+$/, ""));
   /** The literal (or path constant) a match's first group stands for, read out of the source at the same offset. */
   const pathOf = (m: RegExpMatchArray) => {
     const token = m[1];
@@ -453,6 +461,9 @@ function readRouter(indexSrc: string, lastVerifiedSrc: string): Router {
   };
   place(/\bconst path = /g);
   place(/\bconst \w+ = meteredEndpoint\(path\);/g);
+  // ROUTE FIRST (lane fix/1121-connector-errors, item 7a): the name a path
+  // routes as, read to answer an unknown path before the key check.
+  place(/\bconst \w+ = routeOf\(path\);/g);
   place(/(?<![\w$.])path\.slice\(("[^"\n]*")\.length\)/g, (m) => prefixes.has(pathOf(m)));
   place(/\$\{path\}/g, (m) => failSpans.some(([a, b]) => (m.index ?? 0) > a && (m.index ?? 0) < b));
   for (const m of cs.matchAll(/(?<![\w$.])path(?![\w$])/g)) {
@@ -518,7 +529,8 @@ function readRouter(indexSrc: string, lastVerifiedSrc: string): Router {
       keyed: !own.some((s) => s.start < authAt && answers(s)),
       conditional: own.some((s) => /(?<![\w$.])conditional\(/.test(textOf(s))),
       params,
-      codes: new Set([...codes].filter((p) => p !== "405 method_not_allowed")),
+      // A method or a path the API does not answer is no route's refusal (ANY_REQUEST_ERRORS).
+      codes: new Set([...codes].filter((p) => p !== "405 method_not_allowed" && p !== "404 no_such_endpoint")),
     });
   }
 
@@ -540,6 +552,7 @@ function readRouter(indexSrc: string, lastVerifiedSrc: string): Router {
     allPairs: new Set(literal),
     retryAfterCodes: new Set(failCalls(code).filter((c) => /"Retry-After"/.test(c.text)).map((c) => c.code)),
     allowedRequestHeaders: one(code, /"Access-Control-Allow-Headers":\s*"([^"]+)"/, "allowed headers")[1].split(",").map((x) => x.trim().toLowerCase()),
+    indexNamesDocument: /\bopenapi:\s*OPENAPI_PATH\b/.test(body("Deno.serve")),
     paramsRead,
     rowWriterText: `${code}\n${withoutLineLeadingComments(lastVerifiedSrc)}`,
     listFilterDomains,
@@ -590,7 +603,11 @@ function problemsOf(doc: Doc, router: Router): string[] {
   for (const r of diff(router.routes.keys(), ops.keys())) p.push(`the router answers ${r} and the document does not describe it`);
   for (const r of diff(ops.keys(), router.routes.keys())) p.push(`the document describes ${r} and the router does not answer it`);
   const advertised = new Set(f.endpoints.map(routeKeyOf));
-  for (const r of router.routes.keys()) if (r !== "GET /v1" && !advertised.has(r)) p.push(`the router answers ${r} and its index does not list it`);
+  // The document is named in the index's own openapi field, not in endpoints
+  // (that list is held route by route to the site's pages: lane
+  // fix/1121-connector-errors), so a document the index does not name fails.
+  for (const r of router.routes.keys()) if (r !== "GET /v1" && r !== DOCUMENT_ROUTE && !advertised.has(r)) p.push(`the router answers ${r} and its index does not list it`);
+  if (router.routes.has(DOCUMENT_ROUTE) && !advertised.has(DOCUMENT_ROUTE) && !router.indexNamesDocument) p.push(`the router answers ${DOCUMENT_ROUTE} and its index names it nowhere`);
   for (const r of advertised) if (!router.routes.has(r)) p.push(`the index lists ${r} and the router does not dispatch it`);
 
   const allParams = new Set([...f.jobsParams, ...f.changesParams, ...f.companiesParams]);
@@ -677,7 +694,9 @@ function problemsOf(doc: Doc, router: Router): string[] {
     if (!new RegExp(`(?:\\b${c}:|\\.${c}\\s*=|,${c}\\b)`).test(router.rowWriterText)) p.push(`Job names ${c}, which the router never writes`);
   }
   const opened = Object.keys(doc.components?.schemas?.OpenedRow?.properties ?? {});
-  if (diff(opened, f.changesOpenedFields).length || diff(f.changesOpenedFields, opened).length) p.push(`OpenedRow is ${opened.join(",")}; /v1/changes selects ${f.changesOpenedFields.join(",")}`);
+  // Every selected column, and beside them only keys the router writes (OD16's federal block).
+  const openedExtra = diff(opened, f.changesOpenedFields).filter((c) => !new RegExp(`(?:\\b${c}:|\\.${c}\\s*=|,${c}\\b)`).test(router.rowWriterText));
+  if (openedExtra.length || diff(f.changesOpenedFields, opened).length) p.push(`OpenedRow is ${opened.join(",")}; /v1/changes selects ${f.changesOpenedFields.join(",")}`);
   const closed = Object.keys(doc.components?.schemas?.ClosedRow?.properties ?? {});
   const closedWant = [...f.changesClosedFields.filter((c) => !router.closedMapRemoved.includes(c)), ...router.closedMapAdded];
   if (diff(closed, closedWant).length || diff(closedWant, closed).length) p.push(`ClosedRow is ${closed.join(",")}; /v1/changes publishes ${closedWant.join(",")}`);
@@ -786,7 +805,10 @@ describe("the shipped handler agrees with what was read out of its source", () =
     expect(r.status).toBe(200);
     expect(r.body.apiVersion).toBe(ROUTER.facts.apiVersion);
     expect(DOC.info.version).toBe(r.body.apiVersion);
-    expect((r.body.endpoints as string[]).map(routeKeyOf).sort()).toEqual(servedRoutes(ROUTER.facts).filter((x) => x !== "GET /v1").sort());
+    expect((r.body.endpoints as string[]).map(routeKeyOf).sort()).toEqual(servedRoutes(ROUTER.facts).filter((x) => x !== "GET /v1" && x !== DOCUMENT_ROUTE).sort());
+    // The document, named in its own field (lane fix/1121-connector-errors).
+    expect(r.body.openapi).toBe(OPENAPI_PATH);
+    expect(ROUTER.indexNamesDocument).toBe(true);
   });
 
   const routesWithParams: Array<[string, string]> = [
@@ -835,10 +857,44 @@ describe("the shipped handler agrees with what was read out of its source", () =
     }
   });
 
-  it("answers an unknown path with the 404 x-errors names", async () => {
-    const r = await keyed("/v1/no-such-route");
+  it("answers an unknown path with the 404 x-errors names, before the key check (lane fix/1121-connector-errors)", async () => {
+    const db = new RecordingDb();
+    db.rpcs.api_key_check = () => ({ data: ALLOWED, error: null });
+    installDb(db);
+    const r = await callApi(handler, "/v1/no-such-route");
     expect(r.status).toBe(404);
     expect(DOC["x-errors"]).toContainEqual({ status: 404, code: errorOf(r).code });
+    expect(db.rpcCalls.filter((c) => c.name === "api_key_check")).toHaveLength(0);
+    expect(DOC.components.responses.NoSuchEndpoint.description).toMatch(/before any key is read/);
+  });
+
+  it("serves, with no key, exactly the document the guard builds from the constants it read (lane fix/1121-connector-errors)", async () => {
+    for (const at of [OPENAPI_PATH, "/openapi.json"]) {
+      installDb(new RecordingDb());
+      const r = await callApi(handler, at, { auth: false });
+      expect(r.status, at).toBe(200);
+      const served = r.body as Doc;
+      expect(served).toEqual(openApiDocument(ROUTER.facts, String(served.servers?.[0]?.url)) as Doc);
+    }
+  });
+
+  it("names the x-api-key header beside the bearer, and a preflight allows it", () => {
+    expect(DOC.components.securitySchemes.apiKey).toMatchObject({ type: "apiKey", in: "header", name: "x-api-key" });
+    expect(DOC.security).toEqual([{ bearerKey: [] }, { apiKey: [] }]);
+    expect(ROUTER.allowedRequestHeaders).toContain("x-api-key");
+    expect(DOC["x-keyless-sample"]).toMatchObject({ offered: false });
+    expect(DOC["x-get-a-key"].url).toBe(ROUTER.facts.docsUrl);
+  });
+
+  it("has words for OD16's federal fields and this lane's fields", () => {
+    const job = DOC.components.schemas.Job.properties;
+    for (const k of ["closes_at", "who_may_apply", "hiring_paths", "federal"]) expect(job[k]?.[UNDESCRIBED], k).toBeUndefined();
+    expect(job.federal.description).toMatch(/U\.S\. federal rows only/);
+    const page = DOC.components.schemas.JobPage.properties;
+    expect(Object.keys(page.page.properties)).toEqual(expect.arrayContaining(["maxLimit", "refillReads", "pageShortBecause"]));
+    expect(Object.keys(page.coverage.properties)).toContain("feedFreshness");
+    expect(Object.keys(page.disclosures.properties)).toEqual(expect.arrayContaining(["limitCapped", "countryRead"]));
+    for (const s of ["ChangesPage", "CompanyPage"]) expect(Object.keys(DOC.components.schemas[s].properties.page.properties), s).toContain("maxLimit");
   });
 
   it("answers every route the guard read short of that unknown-path refusal", async () => {
@@ -905,6 +961,11 @@ describe("teeth", () => {
     const extra = clone(DOC);
     extra.paths["/v1/ghost"] = { get: { responses: {} } };
     expect(problemsOf(extra, ROUTER)).toContain("the document describes GET /v1/ghost and the router does not answer it");
+  });
+
+  it("a document the router serves and its index names nowhere is named (lane fix/1121-connector-errors)", () => {
+    expect(problemsOf(DOC, ROUTER)).not.toContain(`the router answers ${DOCUMENT_ROUTE} and its index names it nowhere`);
+    expect(problemsOf(DOC, { ...ROUTER, indexNamesDocument: false } as Router)).toContain(`the router answers ${DOCUMENT_ROUTE} and its index names it nowhere`);
   });
 
   it("a refusal the router can give and the route's responses omit is named", () => {

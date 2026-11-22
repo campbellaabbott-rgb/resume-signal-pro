@@ -125,8 +125,11 @@ describe("the scorer in its own isolate", () => {
     // to a confirmed free key at 25 calls a day (owner decisions 2026-10-11).
     // 2026-11-19.1 (OD16) hands on the labelled federal rows with three new
     // fields (closes_at, who_may_apply, hiring_paths) and a federal block.
-    expect(API, "a new endpoint or field is a new API version").toMatch(/const API_VERSION = "2026-11-19\.1"/);
-    for (const old of ["2026-08-26\\.1", "2026-09-03\\.1", "2026-09-09\\.1", "2026-09-17\\.1", "2026-09-23\\.1", "2026-09-27\\.1", "2026-09-30\\.1", "2026-10-08\\.1", "2026-10-09\\.1", "2026-10-11\\.1"]) {
+    // 2026-11-21.1 (lane fix/1121-connector-errors) serves GET /v1/openapi.json
+    // and adds getAKey, keylessSample, page.maxLimit, disclosures.limitCapped,
+    // disclosures.countryRead, coverage.feedFreshness and the refill fields.
+    expect(API, "a new endpoint or field is a new API version").toMatch(/const API_VERSION = "2026-11-21\.1"/);
+    for (const old of ["2026-08-26\\.1", "2026-09-03\\.1", "2026-09-09\\.1", "2026-09-17\\.1", "2026-09-23\\.1", "2026-09-27\\.1", "2026-09-30\\.1", "2026-10-08\\.1", "2026-10-09\\.1", "2026-10-11\\.1", "2026-11-19\\.1"]) {
       expect(API, `the API still reports the superseded version ${old}`)
         .not.toMatch(new RegExp(`"${old}"`));
     }

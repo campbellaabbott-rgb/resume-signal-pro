@@ -152,7 +152,8 @@ describe("/v1 hands a labelled federal row on, with its credit", () => {
   it("the /v1 index says how federal rows are handed on, with OPM's notice", async () => {
     const res = await handler(new Request("https://harness.supabase.co/functions/v1/public-api/v1"));
     const body = await res.json() as { apiVersion: string; restrictions: { excludedSources: string[] }; federal: Record<string, unknown> };
-    expect(body.apiVersion).toBe("2026-11-19.1");
+    // OD16 shipped in 2026-11-19.1; lane fix/1121-connector-errors moved the version on (2026-11-21.1).
+    expect(body.apiVersion).toBe("2026-11-21.1");
     expect(body.restrictions.excludedSources).toEqual(["smartrecruiters"]);
     expect(body.federal.notice).toBe(OPM_NOTICE);
     expect(String(body.federal.gate)).toMatch(/who_may_apply/);

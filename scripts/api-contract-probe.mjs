@@ -387,7 +387,7 @@ console.log("\n[/v1] MCP-parity filters");
 console.log("\n[/v1] 2026-09-03 upgrades");
 {
   const root = await api("/v1");
-  ok(root.body?.apiVersion === "2026-11-19.1", "apiVersion is 2026-11-19.1", root.body?.apiVersion ?? "none");
+  ok(root.body?.apiVersion === "2026-11-21.1", "apiVersion is 2026-11-21.1", root.body?.apiVersion ?? "none");
   ok((root.body?.endpoints ?? []).includes("POST /v1/fit"), "root advertises POST /v1/fit");
   const loc = await api("/v1/jobs?location=London&limit=10");
   ok(loc.status === 200, "location is ACCEPTED on the default engine now", `HTTP ${loc.status} ${loc.body?.error?.code ?? ""}`);
@@ -777,16 +777,20 @@ let mcpToken = null;
   ok(!/paid feature|Upgrade the key/i.test(`${j?.error ?? ""} ${j?.fix ?? ""}`), "no refusal sends a free key to buy an upgrade", j?.fix);
 }
 {
-  // With no key (wave 4): board_stats answers and is never counted, and a
-  // keyed tool (key_status) is refused in the MCP way — a result the agent can
-  // read — not a transport error it cannot.
+  // With no key (wave 4): board_stats answers and is never counted. Since
+  // agent-mcp.2026-11-21.1 (lane fix/1121-connector-errors, item 6) key_status
+  // with no key is an ANSWER, not a refusal: what a keyless caller has
+  // (key.tier none) and where a free key comes from. While sign-in is on the
+  // challenge stands (it is how the host shows its Connect card).
   const r = await mcp("tools/call", { name: "board_stats", arguments: {} }, { key: null });
   const j = toolJson(r.body);
   ok(r.status < 500, "unkeyed tool call is not a server error", `HTTP ${r.status}`);
   ok(Number.isFinite(j?.servablePostings) && j?.unkeyed?.counted === false, "unkeyed board_stats answers and is never counted", JSON.stringify(j?.unkeyed ?? null));
   const k = await mcp("tools/call", { name: "key_status", arguments: {} }, { key: null });
   const kj = toolJson(k.body);
-  ok(k.status < 500 && (k.status === 401 || k.body?.result?.isError === true || Boolean(kj?.error)), "an unkeyed keyed tool is refused in-band (or with a sign-in challenge while sign-in is on)", `HTTP ${k.status}`);
+  ok(k.status < 500 && (k.status === 401 || (k.body?.result?.isError !== true && kj?.key?.tier === "none" && Number.isFinite(kj?.keyless?.lookupsPerDay))),
+    "key_status with no key says what a keyless caller has (key.tier none, keyless.lookupsPerDay), or answers the sign-in challenge while sign-in is on",
+    `HTTP ${k.status} ${kj?.key?.tier ?? kj?.error ?? ""}`);
 }
 
 console.log("\n" + "=".repeat(68));

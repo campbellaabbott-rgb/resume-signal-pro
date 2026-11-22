@@ -21,8 +21,10 @@
  * reads them out of index.ts, and the wiring lane passes the same constants by
  * value when it serves this document.
  *
- * NOT WIRED. Nothing imports this file yet. The wiring lane serves it at
- * OPENAPI_PATH, unmetered and with no key; until then no build stamp moves.
+ * WIRED (lane fix/1121-connector-errors, item 7b): index.ts serves it at
+ * OPENAPI_PATH and /openapi.json, unmetered and with no key, built once per
+ * isolate from routerFacts(), and the guard holds what it serves equal to the
+ * document it builds from the constants it reads out of index.ts.
  *
  * Every import is a module index.ts already bundles, so serving this adds only
  * this file's own bytes to public-api and none to _shared.
@@ -33,8 +35,22 @@ import { APPLICATION_DESCRIPTION, FORM_UNREACHABLE_RETRY_S } from "./application
 import { SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
 import { BOARD_VENDORS, EMPLOYMENT_TYPES, EXPERIENCE_BANDS, JOB_CATEGORIES, WORK_MODES } from "../_shared/board-domains.ts";
 
-/** Where the wiring lane serves this document. */
+/** Where index.ts serves this document (also at /openapi.json). */
 export const OPENAPI_PATH = "/v1/openapi.json";
+
+/** How a key is got, in one step: said on the index, beside both 401s and here (item 7c). */
+export const GET_A_KEY_STEP = "Enter your email on that page and open the link we mail you: it shows the key once.";
+
+/**
+ * NO KEYLESS SAMPLE IN THIS BUILD, AND SAID SO (item 7d): the root, the 401s
+ * and this document carry it, so a caller does not hunt for one. A keyless /v1
+ * read would draw the share every caller outside Claude's and ChatGPT's
+ * servers already shares, and changing what needs a key is the owner's call.
+ */
+export const KEYLESS_SAMPLE = {
+  offered: false,
+  instead: "The same board answers with no key through the MCP connector (https://resumebooster.work/agents): 100 lookups a day for one connection.",
+} as const;
 
 /** The extension key that marks a route, parameter or field the router has and this file does not describe. */
 export const UNDESCRIBED = "x-undescribed";
@@ -191,7 +207,7 @@ const JOBS_PARAM_DOCS: Readonly<Record<string, ParamDoc>> = {
   },
   category: { description: "Job fields. An unknown value answers 400 unsupported_param.", items: closedItems("category") },
   country: {
-    description: "ISO 3166-1 alpha-2 codes, any case (UK is read as GB). Anything else answers 400 invalid_value.",
+    description: "ISO 3166-1 alpha-2 or alpha-3 codes, or country names (Ireland, United Kingdom, USA, Deutschland), any case; disclosures.countryRead says what each name was searched as. England, Scotland, Wales and Northern Ireland are searched as GB, said in countryRead.notes. A name with two readings (Georgia), a region (EU, EMEA) or anything else answers 400 invalid_value naming it.",
     items: { type: "string", pattern: "^[A-Za-z]{2}$" },
   },
   work_mode: { description: "How the work is done.", items: closedItems("work_mode") },
@@ -396,6 +412,34 @@ const JOB_FIELD_DOCS: Readonly<Record<string, FieldDoc>> = {
     schema: nullable("boolean"),
     description: "true when the employer's board is a tagged staffing agency. Anyone republishing a row carries this disclosure with it.",
   },
+  // OD16: the three columns a U.S. federal announcement carries (null off the federal feed).
+  closes_at: {
+    schema: nullable("string", { format: "date-time" }),
+    description: "The closing date the employer's own system gives, when it gives one. On a U.S. federal row it is the agency's closing date, and the posting is open until then.",
+  },
+  who_may_apply: {
+    schema: nullable("string"),
+    description: "On a U.S. federal row, the agency's own statement of who may apply (for example U.S. citizens, or current federal employees). A federal row is served only once this is stored. null on every other row.",
+  },
+  hiring_paths: {
+    schema: { type: ["array", "null"], items: { type: "string" } },
+    description: "On a U.S. federal row, the hiring paths the agency lists (for example public, fed-competitive, veterans). null on every other row.",
+  },
+};
+
+/** The block a U.S. federal row carries, on /v1/jobs, /v1/jobs/{id} and opened[] of /v1/changes. */
+const FEDERAL_ROW_FIELD: FieldDoc = {
+  schema: {
+    type: "object",
+    properties: {
+      agency: { type: "string", description: "The hiring agency (also in company)." },
+      official_url: { type: "string", description: "The announcement on USAJOBS, the official record." },
+      on_board_since: { type: ["string", "null"], format: "date-time", description: "When our board first read the announcement. first_seen is null on a federal row on /v1/jobs, so it is never read as an age." },
+      open_until: { type: ["string", "null"], description: "What open means for this row: until the agency's closing date, not that our last read listed it." },
+      notice: { type: "string", description: "OPM's notice, carried with the row." },
+    },
+  },
+  description: "U.S. federal rows only: the agency, the official announcement, our first sighting and what open means. meta.attribution on the same body carries OPM's credit and the date we read the feed.",
 };
 
 /** Set on every job row after the read (last-verified.ts), and the opt-in and engine-specific fields. */
@@ -411,9 +455,10 @@ const JOB_EXTRA_FIELDS: Readonly<Record<string, FieldDoc>> = {
     description: (f) => `The posting body. On /v1/jobs only with include=description (pages of at most ${f.maxLimitWithDescription}); always on /v1/jobs/{id}.`,
   },
   match_scope: {
-    schema: { type: ["string", "null"], enum: ["title", "description", null] },
-    description: "engine=ranked only: whether the title matched, or the description only.",
+    schema: { type: ["string", "null"] },
+    description: "engine=ranked only: where the query matched. title when the title matched; employer when the employer's name or the department matched and the title did not; description when only the posting body did. null when the board does not say (most rows today): it is never a claim that nothing matched the title.",
   },
+  federal: FEDERAL_ROW_FIELD,
 };
 
 /** The columns closed[] reads to decide suspectBatch and does not publish. */
@@ -440,6 +485,9 @@ const CHANGES_FIELD_DOCS: Readonly<Record<string, FieldDoc>> = {
   },
   superseded: { schema: nullable("boolean"), description: "true when the posting was re-listed under a new id (outcome relisted)." },
   absence_basis: { schema: nullable("string"), description: "How the absence was established (lap_backfill marks an observation date; see closedAtIsObservation)." },
+  closes_at: JOB_FIELD_DOCS.closes_at,
+  who_may_apply: JOB_FIELD_DOCS.who_may_apply,
+  hiring_paths: JOB_FIELD_DOCS.hiring_paths,
 };
 
 /** The keys closed[] rows gain on the way out. */
@@ -506,8 +554,8 @@ const UNKNOWN_PARAMETER: ErrorDoc = [400, "unknown_parameter", "A query paramete
 
 /** Every keyed route can answer these: the key is checked before the route runs, and a route that throws answers 500. */
 const KEY_ERRORS: readonly ErrorDoc[] = [
-  [401, "missing_key", "No Authorization: Bearer <key> header was sent."],
-  [401, "invalid_key", "The key is not recognised."],
+  [401, "missing_key", "No key was sent, in Authorization: Bearer <key> or in x-api-key. The body's getAKey names the page and the one step that gets a free key, and the response carries WWW-Authenticate."],
+  [401, "invalid_key", "The key is not recognised. The body carries the same getAKey block as missing_key."],
   [403, "key_revoked", "The key was revoked: a newer key replaced it, it went unused for 30 days, or it was issued before keys needed a confirmed mailbox. Get a new one from the docs page."],
   [429, "rate_limited", "Over the key's per-minute limit. Retry-After says 60."],
   [429, "quota_exceeded", "The key's daily quota is used. It resets at midnight UTC, and Retry-After counts the seconds to then."],
@@ -518,7 +566,7 @@ const KEY_ERRORS: readonly ErrorDoc[] = [
 /** Refusals no operation owns: they answer a method or a path, not a route. */
 const ANY_REQUEST_ERRORS: readonly ErrorDoc[] = [
   [405, "method_not_allowed", "A method this API does not answer: every route is GET except POST /v1/fit, and a GET to /v1/fit is refused before the key is read."],
-  [404, "no_such_endpoint", "A path this API does not have (answered after the key check)."],
+  [404, "no_such_endpoint", "A path this API does not have. Answered before any key is read, and not metered."],
 ];
 
 const ROUTES: Readonly<Record<string, RouteDoc>> = {
@@ -558,7 +606,7 @@ const ROUTES: Readonly<Record<string, RouteDoc>> = {
     errors: (f) => [
       UNKNOWN_PARAMETER,
       [400, "unsupported_param", "A value outside a closed list (source, category, work_mode, experience_band, employment_type, include); sort on the default engine; or cursor, posted_before, include=description or remote=false with engine=ranked."],
-      [400, "invalid_value", "A value that does not parse (limit, offset, max_years, max_age_days, salary_min, salary_max, a date, a true-or-false flag, engine, pay_basis), a country that is not an ISO 3166-1 alpha-2 code, or more comma-separated values than a list takes."],
+      [400, "invalid_value", "A value that does not parse (limit, offset, max_years, max_age_days, salary_min, salary_max, a date, a true-or-false flag, engine, pay_basis), a country that is no country (a region, a name with two readings, or no reading at all), or more comma-separated values than a list takes."],
       [400, "bad_cursor", "A cursor this API did not issue."],
       [400, "offset_too_deep", `offset above ${f.maxOffset}. Page with cursor instead.`],
       [402, "upgrade_required", `engine=ranked on a free key. Ranked search is part of the planned Builder tier (${f.builderUrl}).`],
@@ -679,7 +727,7 @@ const ROUTES: Readonly<Record<string, RouteDoc>> = {
     ok: { description: "The scored postings.", schema: ref("FitResult") },
     errors: (f) => [
       [400, "invalid_json", "The body is not JSON."],
-      [400, "invalid_value", `resumeText is missing or shorter than ${f.fit.resumeTextMinChars} characters.`],
+      [400, "invalid_value", `resumeText is missing or shorter than ${f.fit.resumeTextMinChars} characters, or country names no country this API can read.`],
       [402, "fit_allowance_used", `The free allowance (${FIT_FREE_DAILY} scored calls a UTC day) is used. Retry-After counts the seconds to midnight UTC.`],
       [403, "confirmed_key_required", "A free key that was not issued through a confirmed link, on an account that has not proven its mailbox."],
       [429, "rate_limited", "The scorer's own daily allowance for this key is used. Retry-After says 3600."],
@@ -702,7 +750,7 @@ const FIT_BODY_DOCS: Readonly<Record<string, FieldDoc>> = {
   },
   q: { schema: { type: "string" }, description: "A job title to search for instead of the occupation read from the résumé. Only the first 200 characters are read." },
   limit: { schema: { type: "integer", minimum: 1 }, description: (f) => `How many postings to score, 1 to ${f.fit.limitMax} (default ${f.fit.limitDefault}).` },
-  country: { schema: { type: "string" }, description: "ISO 3166-1 alpha-2 codes to search in, comma-separated, as the board takes them." },
+  country: { schema: { type: "string" }, description: "Codes or names to search in, comma-separated, read as ?country= on /v1/jobs reads them. A country it cannot read answers 400 invalid_value, never a search scored without it." },
   remote: { schema: { type: "boolean" }, description: "true searches remote postings only." },
 };
 export const DESCRIBED_FIT_FIELDS: readonly string[] = Object.keys(FIT_BODY_DOCS);
@@ -795,9 +843,12 @@ export function routeKeyOf(endpoint: string): string {
   return /^(GET|POST|PUT|PATCH|DELETE) /.test(s) ? s : `GET ${s}`;
 }
 
-/** The routes the document describes: the index itself, and every endpoint the index lists. */
+/** The route this document is served at, which the index names in its own `openapi` field. */
+export const DOCUMENT_ROUTE = `GET ${OPENAPI_PATH}`;
+
+/** The routes the document describes: the index itself, this document, and every endpoint the index lists. */
 export function servedRoutes(f: RouterFacts): string[] {
-  return ["GET /v1", ...f.endpoints.map(routeKeyOf).filter((r) => r !== "GET /v1")];
+  return ["GET /v1", DOCUMENT_ROUTE, ...f.endpoints.map(routeKeyOf).filter((r) => r !== "GET /v1" && r !== DOCUMENT_ROUTE)];
 }
 
 const HEADER = (description: string, type = "integer"): Json => ({ description, schema: { type } });
@@ -923,7 +974,13 @@ function components(f: RouterFacts): Json {
       bearerKey: {
         type: "http",
         scheme: "bearer",
-        description: `A key from ${f.docsUrl} (we email you a link). Send it as Authorization: Bearer <key>. A free key is issued with ${f.freeKeyIssued.perMinute} requests a minute and ${f.freeKeyIssued.perDay} a day; every response's X-RateLimit-* and X-Quota-* headers carry the key's own.`,
+        description: `A key from ${f.docsUrl}. ${GET_A_KEY_STEP} Send it as Authorization: Bearer <key>, or in x-api-key. A free key is issued with ${f.freeKeyIssued.perMinute} requests a minute and ${f.freeKeyIssued.perDay} a day; every response's X-RateLimit-* and X-Quota-* headers carry the key's own.`,
+      },
+      apiKey: {
+        type: "apiKey",
+        in: "header",
+        name: "x-api-key",
+        description: "The same key, in x-api-key, for a client that already sends another credential in Authorization (a Supabase publishable key, say): a key starting rb_live_ in either header is the one read.",
       },
     },
     responses: {
@@ -944,6 +1001,9 @@ function components(f: RouterFacts): Json {
             },
           },
           apiVersion: { type: "string" },
+          getAKey: { type: "object", description: "401 missing_key and invalid_key only: url (the page), step (the one step that gets a free key), free (the limits a free key is issued with) and send (the two headers that carry it)." },
+          keylessSample: { type: "object", description: "401s only: offered is false in this build; instead names the keyless route to the same board." },
+          openapi: { type: "string", description: "401s only: where this document is served, with no key." },
         },
       },
       Job: rowSchema(f.jobFields, JOB_FIELD_DOCS, f, JOB_EXTRA_FIELDS),
@@ -956,15 +1016,38 @@ function components(f: RouterFacts): Json {
           data: { type: "array", items: ref("Job") },
           page: page({
             limit: { type: "integer" },
-            maxLimit: { type: "integer", description: "The cap that applied to this request (default engine)." },
+            maxLimit: { type: "integer", description: "The cap that applied to this request. A larger limit was cut to it, and disclosures.limitCapped says so." },
             offset: { type: "integer" },
             returned: { type: "integer" },
             nextCursor: { ...cursorOrNull, description: "Pass as cursor= for the next page (default engine); null on the last page." },
             nextOffset: { ...nullable("integer"), description: "Pass as offset= for the next page; null past the offset cap or on the last page." },
+            refillReads: { type: "integer", description: "engine=ranked only: how many more board reads (at most two) filled this page after rows from the withheld hiring systems, or unlabelled federal rows, were dropped from it." },
+            pageShortBecause: {
+              type: "string",
+              enum: ["refill_limit", "deepest_offset", "time_budget", "board_moved", "board_error", "no_next_offset"],
+              description: "engine=ranked only, and only on a page shorter than limit while nextOffset says more exist: why it was not filled. Ask for the next page with offset = nextOffset.",
+            },
           }),
           total: { type: "object", description: "value is the count of matching postings, or null when it could not be counted in time; basis says how it was counted." },
-          coverage: { type: "object", description: "The serving window, and with a salary floor the share of postings a floor can see." },
-          disclosures: { type: "object", description: "What the engine did that a caller would otherwise not see: a capped page, unknown employer tokens, and on engine=ranked the board's own notes and the withheld hiring systems." },
+          coverage: {
+            type: "object",
+            description: "The serving window, and with a salary floor the share of postings a floor can see.",
+            properties: {
+              feedFreshness: {
+                type: "object",
+                description: "How long ago the employer feeds behind live postings were re-read, measured: p50Minutes, p95Minutes, asOf (when it was measured) and basis. Our re-check cadence, not a posting's age. Absent when the measurement could not be read in time.",
+                properties: { p50Minutes: { type: "number" }, p95Minutes: { type: "number" }, asOf: { type: "string", format: "date-time" }, basis: { type: "string" } },
+              },
+            },
+          },
+          disclosures: {
+            type: "object",
+            description: "What the engine did that a caller would otherwise not see: a capped page, unknown employer tokens, a country read from its name, and on engine=ranked the board's own notes and the withheld hiring systems.",
+            properties: {
+              limitCapped: { type: "object", description: "requested, applied and reason (max_limit, or include=description): the limit asked for was above the cap and was cut." },
+              countryRead: { type: "object", description: "read maps each country entry that was not already its ISO code to the code it was searched as (Ireland -> IE); notes says when a part of a country (Scotland) was searched as the whole country." },
+            },
+          },
           diagnostics: { type: "object", description: "explain=1 only." },
         },
       },
@@ -978,7 +1061,7 @@ function components(f: RouterFacts): Json {
           note: { type: "string" },
         },
       },
-      OpenedRow: rowSchema(f.changesOpenedFields, CHANGES_FIELD_DOCS, f),
+      OpenedRow: rowSchema(f.changesOpenedFields, CHANGES_FIELD_DOCS, f, { federal: FEDERAL_ROW_FIELD }),
       ClosedRow: rowSchema(
         f.changesClosedFields.filter((c) => !(CLOSED_READ_NOT_PUBLISHED as readonly string[]).includes(c)),
         CHANGES_FIELD_DOCS,
@@ -995,7 +1078,8 @@ function components(f: RouterFacts): Json {
           closed: { type: "array", items: ref("ClosedRow") },
           page: page({
             limit: { type: "integer" },
-            openedReturned: { type: "integer" },
+            maxLimit: { type: "integer", description: "The cap that applied to this request." },
+            openedReturned: { type: "integer", description: "The opened rows this page served." },
             closedReturned: { type: "integer" },
             opened: ref("ChangesCursor"),
             closed: ref("ChangesCursor"),
@@ -1006,6 +1090,7 @@ function components(f: RouterFacts): Json {
           closureWindowNarrowed: { type: "boolean" },
           suspectBatchesIncluded: { type: "boolean" },
           excludedSources: { type: "object" },
+          disclosures: { type: "object", description: "limitCapped, when the limit asked for was above the cap." },
           note: { type: "string" },
         },
       },
@@ -1026,6 +1111,7 @@ function components(f: RouterFacts): Json {
           },
           page: page({
             limit: { type: "integer" },
+            maxLimit: { type: "integer", description: "The cap that applied to this request." },
             returned: { type: "integer" },
             matched: { type: "integer" },
             hasMore: { type: "boolean" },
@@ -1033,6 +1119,7 @@ function components(f: RouterFacts): Json {
             order: { type: "string" },
           }),
           excludedSources: { type: "object" },
+          disclosures: { type: "object", description: "limitCapped, when the limit asked for was above the cap." },
           asOf: nullable("string", { format: "date-time" }),
           countsCarried: { type: "boolean" },
           basis: { type: "string" },
@@ -1081,8 +1168,11 @@ function components(f: RouterFacts): Json {
         properties: {
           apiVersion: { type: "string" },
           docs: { type: "string" },
+          openapi: { type: "string", description: "Where this document is served, with no key." },
           endpoints: { type: "array", items: { type: "string" } },
           auth: { type: "string" },
+          getAKey: { type: "object", description: "url, step, free and send: where a free key comes from, in one step, and the two headers that carry it." },
+          keylessSample: { type: "object", description: "offered is false in this build; instead names the keyless route to the same board." },
           modes: { type: "object" },
           tiers: { type: "object" },
           restrictions: { type: "object" },
@@ -1112,13 +1202,14 @@ export function openApiDocument(f: RouterFacts, serverUrl: string): Json {
       description: [
         `Every row is a live posting: not withdrawn by the employer, and dated within the last ${f.freshWindowDays} days.`,
         `${f.withheldReason} Naming one in ?source=, or asking for the application form of one of their postings, answers 451 source_not_redistributable rather than an empty page.`,
-        "Every error is JSON, { error: { code, message }, apiVersion }: a program reads code, a person reads message. A route other than POST /v1/fit answers GET only (405 method_not_allowed), and an unknown path answers 404 no_such_endpoint.",
+        "Every error is JSON, { error: { code, message }, apiVersion }: a program reads code, a person reads message. A route other than POST /v1/fit answers GET (and HEAD, as GET with no body) only (405 method_not_allowed), and an unknown path answers 404 no_such_endpoint before any key is read. One trailing slash is ignored.",
+        `Get a key at ${f.docsUrl}: ${GET_A_KEY_STEP} Send it as Authorization: Bearer <key> or x-api-key: <key>. There is no keyless sample of /v1 in this build: ${KEYLESS_SAMPLE.instead} This document, at ${OPENAPI_PATH}, needs no key and is not metered.`,
         `A free key is issued with ${f.freeKeyIssued.perMinute} requests a minute and ${f.freeKeyIssued.perDay} a day. The planned Builder tier (${f.builderUrl}) proposes ${f.builderProposed.perMinute} a minute and ${f.builderProposed.perDay} a day, ranked search, and ${f.changesMaxDaysPaid} days of closure history; it is not on sale yet.`,
       ].join("\n\n"),
     },
     externalDocs: { description: "Keys, limits and licensing", url: f.docsUrl },
     servers: [{ url: serverUrl }],
-    security: [{ bearerKey: [] }],
+    security: [{ bearerKey: [] }, { apiKey: [] }],
     tags: [
       { name: "About" },
       { name: "Jobs" },
@@ -1132,6 +1223,8 @@ export function openApiDocument(f: RouterFacts, serverUrl: string): Json {
     components: components(f),
     "x-errors": errorCatalogue(f),
     "x-withheld-sources": { sources: [...f.withheldSources], reason: f.withheldReason, status: 451, code: "source_not_redistributable" },
+    "x-get-a-key": { url: f.docsUrl, step: GET_A_KEY_STEP, free: { perDay: f.freeKeyIssued.perDay, perMinute: f.freeKeyIssued.perMinute }, send: ["Authorization: Bearer <key>", "x-api-key: <key>"] },
+    "x-keyless-sample": KEYLESS_SAMPLE,
     "x-tiers": {
       free: {
         issuedWith: { perDay: f.freeKeyIssued.perDay, perMinute: f.freeKeyIssued.perMinute },

@@ -37,3 +37,28 @@ export function meteredEndpoint(path: string): string {
   if (path === FIT_ENDPOINT || path === `${FIT_ENDPOINT}/`) return FIT_ENDPOINT;
   return path;
 }
+
+/** Where the OpenAPI document is served (openapi.ts's OPENAPI_PATH, which a test holds equal). */
+const OPENAPI_DOCUMENT = "/v1/openapi.json";
+
+/** One trailing slash off, so /v1/companies/ routes as /v1/companies; "/" stays "/". */
+export function oneTrailingSlashOff(path: string): string {
+  return path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
+}
+
+/**
+ * WHICH ROUTE A STRIPPED PATH IS, OR NULL FOR A PATH THIS API DOES NOT HAVE
+ * (lane fix/1121-connector-errors, item 7a). The router answers null with 404
+ * before any key is read, so a mistyped path is never metered. The names are
+ * the metered ones above, plus the index and the document.
+ */
+export function routeOf(path: string): string | null {
+  if (path === "/" || path === "/v1") return "/v1";
+  if (path === OPENAPI_DOCUMENT || path === "/openapi.json") return OPENAPI_DOCUMENT;
+  if (applicationIdSegment(path) !== null) return APPLICATION_ENDPOINT;
+  // As the router reads it: everything after /v1/jobs/ is the id.
+  if (path.startsWith("/v1/jobs/") && path.length > "/v1/jobs/".length) return "/v1/jobs/{id}";
+  if (path === FIT_ENDPOINT) return FIT_ENDPOINT;
+  for (const p of ["/v1/jobs", "/v1/changes", "/v1/companies", "/v1/stats", "/v1/usage"]) if (path === p) return p;
+  return null;
+}

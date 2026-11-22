@@ -157,9 +157,15 @@ describe("a filter with one value slot cannot hold a list", () => {
     expect(t.country.domain).toBe("null");
   });
 
-  it("country is checked for SHAPE instead — 'USA' is not a code this board stores", () => {
-    expect(API).toMatch(/!\/\^\[A-Z\]\{2\}\$\/\.test\(x\)/);
-    expect(API).toMatch(/ISO-3166-1 alpha-2/);
+  it("country is read through the one fixed table instead: only a code the board stores is ever bound", () => {
+    // Before lane fix/1121-connector-errors (item 3) this was a SHAPE check,
+    // and 'USA' was a 400. Now ./country-names.ts reads a code, an alpha-3 or
+    // a name (USA binds US, Ireland binds IE) and refuses the rest naming the
+    // entry, and only the codes it answers reach the query: never the raw text.
+    expect(API).toMatch(/import \{ COUNTRY_FIX, countryArg \} from "\.\/country-names\.ts";/);
+    expect(API).toMatch(/const c = countryArg\(raw \?\? ""\);/);
+    expect(API).toMatch(/if \(c\.errors\.length\) return fail\(400, "invalid_value"/);
+    expect(API).toMatch(/lists\.country = c\.codes;/);
     // Folded to upper case before the test, the way the board folds it: a
     // lower-case 'gb' must not be the difference between a filter and a 400.
     expect(API).toMatch(/f\.fold === "upper" \? x\.toUpperCase\(\)/);
@@ -173,7 +179,8 @@ describe("a filter with one value slot cannot hold a list", () => {
     const engineAt = API.indexOf('engine === "ranked"');
     expect(parseAt).toBeGreaterThan(-1);
     expect(parseAt, "the closed-set parse must run before the ranked dispatch").toBeLessThan(engineAt);
-    expect(API).toMatch(/return await listJobsRanked\(url, headers, lists\);/);
+    // The ranked engine is handed the parsed lists (and, since item 3, what each country name was read as).
+    expect(API).toMatch(/return await listJobsRanked\(url, headers, lists(, countryRead)?\);/);
   });
 
   it("the ranked path sends company_token as an ARRAY — a string bound nothing", () => {

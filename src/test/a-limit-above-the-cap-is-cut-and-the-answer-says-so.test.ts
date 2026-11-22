@@ -7,8 +7,10 @@
  * which reads as the board running out. No cap changes here: the answer
  * says the cap it met.
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { bootKeylessMcp, type KeylessMcp } from "./helpers/keyless-mcp";
+import { ALLOWED, RecordingDb, callApi, loadPublicApi, useDb, type Fetched } from "./helpers/public-api-harness";
+import type { EdgeHandler } from "./helpers/edge-harness";
 
 vi.setConfig({ testTimeout: 30_000, hookTimeout: 120_000 });
 
@@ -58,5 +60,60 @@ describe("a limit above the cap is cut, and the answer says so", () => {
     const r = await call({ query: "nurse", limit });
     expect(r.isError).toBe(false);
     for (const k of ["limitAsked", "limitApplied", "limitNote"]) expect(r.body).not.toHaveProperty(k);
+  });
+});
+
+describe("/v1 says the cap it met on every list route", () => {
+  let handler: EdgeHandler;
+  let fetched: Fetched[];
+  let apiGlobals: { Deno: unknown; fetch: unknown };
+  let boardAnswer: (body: Record<string, unknown>) => Record<string, unknown> = () => ({ jobs: [], total: 0, hasMore: false });
+  let db: RecordingDb;
+  beforeAll(async () => {
+    ({ handler, fetched } = await loadPublicApi((f) => {
+      if (f.url.endsWith("/functions/v1/job-board")) return new Response(JSON.stringify(boardAnswer(f.body as Record<string, unknown>)), { status: 200 });
+      if (f.url.endsWith("/functions/v1/job-fit")) return new Response(JSON.stringify({ fits: {}, matched: {}, missing: {} }), { status: 200 });
+      return new Response("{}", { status: 404 });
+    }));
+    const g = globalThis as Record<string, unknown>;
+    apiGlobals = { Deno: g.Deno, fetch: g.fetch };
+  }, 120_000);
+  beforeEach(() => {
+    // The connector's harness installs its own globals; this block's handler reads the API's.
+    Object.assign(globalThis as Record<string, unknown>, apiGlobals);
+    fetched.length = 0;
+    db = new RecordingDb();
+    db.rpcs.api_key_check = () => ({ data: { ...ALLOWED, key_tier: "builder" }, error: null });
+    db.rpcs.v1_withheld_company_tokens = () => ({ data: [], error: null });
+    db.rpcs.api_key_fit_allowance = () => ({ data: [{ fa_user_id: null, fa_confirmed: true, fa_proven: false, fa_used: 3 }], error: null });
+    db.rpcs.api_key_fit_unscored = () => ({ data: true, error: null });
+    useDb(db);
+  });
+
+  it("/v1/companies?limit=500 answers page.maxLimit 100 and disclosures.limitCapped", async () => {
+    const r = await callApi(handler, "/v1/companies?limit=500");
+    expect(r.status, JSON.stringify(r.body).slice(0, 200)).toBe(200);
+    expect((r.body.page as { maxLimit: number }).maxLimit).toBe(100);
+    expect((r.body.disclosures as { limitCapped: unknown }).limitCapped).toEqual({ requested: 500, applied: 100, reason: "max_limit" });
+  });
+  it("/v1/changes?limit=500 says the same", async () => {
+    const since = new Date(Date.now() - 86_400_000).toISOString();
+    const r = await callApi(handler, `/v1/changes?since=${encodeURIComponent(since)}&limit=500`);
+    expect(r.status, JSON.stringify(r.body).slice(0, 200)).toBe(200);
+    expect((r.body.page as { maxLimit: number }).maxLimit).toBe(100);
+    expect((r.body.disclosures as { limitCapped: { requested: number } }).limitCapped.requested).toBe(500);
+  });
+  it("engine=ranked limit=500 says the same, and the board is asked for 100", async () => {
+    const r = await callApi(handler, "/v1/jobs?engine=ranked&q=nurse&limit=500");
+    expect(r.status, JSON.stringify(r.body).slice(0, 200)).toBe(200);
+    expect((r.body.page as { maxLimit: number }).maxLimit).toBe(100);
+    expect((r.body.disclosures as { limitCapped: unknown }).limitCapped).toEqual({ requested: 500, applied: 100, reason: "max_limit" });
+    expect((fetched.find((f) => f.url.endsWith("/functions/v1/job-board"))?.body as { limit: number }).limit).toBe(100);
+  });
+  it("the default engine says max_limit too; a limit within the cap adds nothing", async () => {
+    const r = await callApi(handler, "/v1/jobs?q=nurse&limit=500");
+    expect((r.body.disclosures as { limitCapped: unknown }).limitCapped).toEqual({ requested: 500, applied: 100, reason: "max_limit" });
+    const ok = await callApi(handler, "/v1/companies?limit=50");
+    expect(ok.body).not.toHaveProperty("disclosures");
   });
 });

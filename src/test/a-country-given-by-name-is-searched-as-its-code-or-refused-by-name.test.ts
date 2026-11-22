@@ -16,8 +16,10 @@
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { bootKeylessMcp, type KeylessMcp } from "./helpers/keyless-mcp";
+import { ALLOWED, RecordingDb, callApi, loadPublicApi, useDb, type Fetched } from "./helpers/public-api-harness";
+import type { EdgeHandler } from "./helpers/edge-harness";
 import { COUNTRY_CODES, alpha3Of, countryArg, countryNameTable, readCountry } from "../../supabase/functions/agent-mcp/country-names.ts";
 
 vi.setConfig({ testTimeout: 30_000, hookTimeout: 120_000 });
@@ -136,5 +138,59 @@ describe("through the connector", () => {
     const r = await call({ query: "Recruiter", country: "IE" });
     expect(r.body.jobs).toEqual([]);
     expect(r.body.notSearched).toBe(true);
+  });
+});
+
+describe("/v1 reads the same table", () => {
+  let handler: EdgeHandler;
+  let fetched: Fetched[];
+  let apiGlobals: { Deno: unknown; fetch: unknown };
+  let boardAnswer: (body: Record<string, unknown>) => Record<string, unknown> = () => ({ jobs: [], total: 0, hasMore: false });
+  let db: RecordingDb;
+  beforeAll(async () => {
+    ({ handler, fetched } = await loadPublicApi((f) => {
+      if (f.url.endsWith("/functions/v1/job-board")) return new Response(JSON.stringify(boardAnswer(f.body as Record<string, unknown>)), { status: 200 });
+      if (f.url.endsWith("/functions/v1/job-fit")) return new Response(JSON.stringify({ fits: {}, matched: {}, missing: {} }), { status: 200 });
+      return new Response("{}", { status: 404 });
+    }));
+    const g = globalThis as Record<string, unknown>;
+    apiGlobals = { Deno: g.Deno, fetch: g.fetch };
+  }, 120_000);
+  beforeEach(() => {
+    // The connector's harness installs its own globals; this block's handler reads the API's.
+    Object.assign(globalThis as Record<string, unknown>, apiGlobals);
+    fetched.length = 0;
+    db = new RecordingDb();
+    db.rpcs.api_key_check = () => ({ data: { ...ALLOWED, key_tier: "builder" }, error: null });
+    db.rpcs.v1_withheld_company_tokens = () => ({ data: [], error: null });
+    db.rpcs.api_key_fit_allowance = () => ({ data: [{ fa_user_id: null, fa_confirmed: true, fa_proven: false, fa_used: 3 }], error: null });
+    db.rpcs.api_key_fit_unscored = () => ({ data: true, error: null });
+    useDb(db);
+  });
+
+  it("/v1/jobs?country=Ireland binds IE and says countryRead", async () => {
+    const r = await callApi(handler, "/v1/jobs?country=Ireland");
+    expect(r.status).toBe(200);
+    const bound = db.queriesOf("job_board_postings").flat().filter(([, a]) => (a as unknown[])[0] === "country").map(([, a]) => (a as unknown[])[1]);
+    expect(JSON.stringify(bound)).toContain('"IE"');
+    expect((r.body.disclosures as Record<string, unknown>).countryRead).toEqual({ read: { Ireland: "IE" } });
+  });
+  it("Georgia keeps the 400, naming both readings; EU is refused by name", async () => {
+    const g = await callApi(handler, "/v1/jobs?country=Georgia");
+    expect(g.status).toBe(400);
+    expect((g.body.error as { message: string }).message).toMatch(/GE/);
+    expect((g.body.error as { message: string }).message).toMatch(/US/);
+    const eu = await callApi(handler, "/v1/jobs?country=EU");
+    expect(eu.status).toBe(400);
+    expect((eu.body.error as { message: string }).message).toContain('"EU"');
+  });
+  it("POST /v1/fit {country: 'Atlantis'} answers 400 and searches nothing; a name binds its code", async () => {
+    const resumeText = "Registered nurse with eight years of triage, emergency department care, patient education and charting. ".repeat(2);
+    const bad = await callApi(handler, "/v1/fit", { method: "POST", body: { resumeText, q: "nurse", country: "Atlantis" } });
+    expect(bad.status).toBe(400);
+    expect((bad.body.error as { code: string }).code).toBe("invalid_value");
+    expect(fetched.filter((f) => f.url.endsWith("/functions/v1/job-board"))).toHaveLength(0);
+    await callApi(handler, "/v1/fit", { method: "POST", body: { resumeText, q: "nurse", country: "Ireland" } });
+    expect(fetched.find((f) => f.url.endsWith("/functions/v1/job-board"))?.body).toMatchObject({ country: "IE" });
   });
 });
