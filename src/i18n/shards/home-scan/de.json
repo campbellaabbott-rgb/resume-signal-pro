@@ -1,0 +1,24 @@
+{
+  "homeScan": {
+    "tailoringNotes": {
+      "download": "Anpassungsnotizen herunterladen",
+      "readyTitle": "Deine Anpassungsnotizen sind fertig",
+      "readyBody": "Notizen für diese Stelle: eine Zusammenfassung, Fähigkeiten und Stichpunkte, die du in deinen eigenen Lebenslauf übernehmen kannst. Sie sind kein Lebenslauf, den du so verschickst.",
+      "downloadedTitle": "Anpassungsnotizen heruntergeladen",
+      "downloadedBody": "Übernimm, was auf dich zutrifft, in deinen eigenen Lebenslauf, bevor du dich bewirbst."
+    },
+    "keywordCoverage": {
+      "title": "Schlüsselwörter der Stellenanzeige in diesem Text",
+      "summary": "{{found}} von {{total}} Schlüsselwörtern aus der Stellenanzeige stehen in der angepassten Zusammenfassung, den Fähigkeiten oder den Stichpunkten.",
+      "found": "Im Text",
+      "notFoundLabel": "Nicht im Text",
+      "notFound": "Nicht im angepassten Text: {{n}}. Nimm die, die auf dich zutreffen, in deinen eigenen Lebenslauf auf."
+    },
+    "outcome": {
+      "title": "Wie ist es mit Bericht #{{reportId}} gelaufen?",
+      "body": "Der Link in deiner E-Mail hat die Antwort unten ausgewählt. Gespeichert wird erst, wenn du sie hier bestätigst, und du kannst sie vorher noch ändern.",
+      "save": "Meine Antwort speichern",
+      "dismiss": "Jetzt nicht"
+    }
+  }
+}

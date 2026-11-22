@@ -1,0 +1,24 @@
+{
+  "homeScan": {
+    "tailoringNotes": {
+      "download": "I-download ang tailoring notes",
+      "readyTitle": "Handa na ang tailoring notes",
+      "readyBody": "Mga notes para sa role na ito: summary, skills at bullet points na puwede mong kopyahin sa sarili mong resume. Hindi ito resume na ipapadala nang ganito lang.",
+      "downloadedTitle": "Na-download na ang tailoring notes",
+      "downloadedBody": "Kopyahin sa sarili mong resume ang totoo tungkol sa iyo bago ka mag-apply."
+    },
+    "keywordCoverage": {
+      "title": "Mga keyword ng posting sa text na ito",
+      "summary": "{{found}} sa {{total}} keyword mula sa posting ang nasa inangkop na summary, skills o bullet points.",
+      "found": "Nasa text",
+      "notFoundLabel": "Wala sa text",
+      "notFound": "Wala sa inangkop na text: {{n}}. Idagdag sa sarili mong resume ang mga totoo tungkol sa iyo."
+    },
+    "outcome": {
+      "title": "Kumusta ang naging resulta ng report #{{reportId}}?",
+      "body": "Ang link sa email mo ang pumili ng sagot sa ibaba. Walang mase-save hangga't hindi mo ito kinukumpirma rito, at puwede mo muna itong palitan.",
+      "save": "I-save ang sagot ko",
+      "dismiss": "Hindi muna"
+    }
+  }
+}

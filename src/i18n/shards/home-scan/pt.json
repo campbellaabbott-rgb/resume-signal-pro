@@ -1,0 +1,24 @@
+{
+  "homeScan": {
+    "tailoringNotes": {
+      "download": "Transferir notas de adaptação",
+      "readyTitle": "Notas de adaptação prontas",
+      "readyBody": "Notas para esta vaga: um resumo, competências e tópicos para copiar para o seu próprio currículo. Não são um currículo para enviar tal como estão.",
+      "downloadedTitle": "Notas de adaptação transferidas",
+      "downloadedBody": "Copie para o seu próprio currículo o que for verdade no seu caso antes de se candidatar."
+    },
+    "keywordCoverage": {
+      "title": "Palavras-chave da vaga neste texto",
+      "summary": "{{found}} de {{total}} palavras-chave da vaga aparecem no resumo, nas competências ou nos tópicos adaptados.",
+      "found": "No texto",
+      "notFoundLabel": "Não está no texto",
+      "notFound": "Não estão no texto adaptado: {{n}}. Adicione ao seu próprio currículo as que forem verdade no seu caso."
+    },
+    "outcome": {
+      "title": "Como correu com o relatório #{{reportId}}?",
+      "body": "O link do seu e-mail escolheu a resposta abaixo. Nada é guardado até a confirmar aqui, e pode alterá-la antes.",
+      "save": "Guardar a minha resposta",
+      "dismiss": "Agora não"
+    }
+  }
+}
