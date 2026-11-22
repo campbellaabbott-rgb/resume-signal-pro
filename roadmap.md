@@ -1,8 +1,8 @@
 # Deployment checklist 55ea9bc59 — 2026-11-22
 - [x] Synced checkout is exactly 55ea9bc59120d189b1e1fbdb6c6d85501da81ff2; all requested source files are present.
-- [ ] Apply 20261121130000, 20261206100000, 20261206110000, and 20261206130000 unchanged, individually in that order. First applied as drizzle 0283.
-- [ ] Deploy agent-mcp, analyze-resume, generate-interview-coach, public-api, reconcile-stripe, recover-purchase, retry-failed-deliveries, and send-search-digest; verify the eight requested OPTIONS build markers.
-- [ ] Check whether the live frontend serves 55ea9bc59; publish only if needed after migrations and function verification.
+- [x] Applied 20261121130000, 20261206100000, 20261206110000, and 20261206130000 unchanged, individually in that order as drizzle 0283–0286; all byte-exact, all self-checks passed, live database read-back confirmed. No failures, retries, staging, or never-apply files touched.
+- [x] Deployed all eight requested functions; every OPTIONS response returned 200 and the exact requested x-fn-build. Generated the deployment ledger record; 62 connector regression tests passed.
+- [x] Homepage initially served older 043571bb; requested frontend publish, then one subsequent fetch confirmed HTTP 200 and exact commit 55ea9bc59120d189b1e1fbdb6c6d85501da81ff2. Latest preview build OK; function and source migration folders unchanged. Older critical pitch-writing scan finding disclosed; no security code changed.
 
 # Deployment checklist dce1abd09
 - [x] Apply eight unchanged migrations in uploaded order (drizzle 0275–0282); all self-checks passed, every copy byte-exact, no retries or staging. Never-apply list untouched.

@@ -2064,6 +2064,21 @@
         "warm-up": "warm-up.2026-11-09.2",
         "withdraw-subscription": "withdraw-subscription.2026-11-12.1"
       }
+    },
+    {
+      "commit": "55ea9bc5",
+      "date": "2026-11-22",
+      "note": "Owner checklist verified: four unchanged migrations applied individually as drizzle 0283–0286, all byte-exact and self-checks passed; live database read-back confirms all four changes. Eight OPTIONS requests returned 200 with exact requested builds. Frontend published because homepage served older 043571bb; one subsequent fetch confirmed HTTP 200 and exact commit 55ea9bc59120d189b1e1fbdb6c6d85501da81ff2. 62 connector regression tests passed. Never-apply files untouched.",
+      "functions": {
+        "agent-mcp": "agent-mcp.2026-11-21.2",
+        "analyze-resume": "analyze-resume.2026-11-21.1",
+        "generate-interview-coach": "generate-interview-coach.2026-11-21.1",
+        "public-api": "public-api.2026-11-21.2",
+        "reconcile-stripe": "reconcile-stripe.2026-11-21.1",
+        "recover-purchase": "recover-purchase.2026-11-21.1",
+        "retry-failed-deliveries": "retry-failed-deliveries.2026-11-21.1",
+        "send-search-digest": "send-search-digest.2026-11-19.1"
+      }
     }
   ],
   "_holdNote": "20261008125000 and 20261008128000 were released 2026-10-11 after wave 2 step 1 verified (their conditions: job-board .91, send-search-digest, industry-corrections-digest and check-error-spikes serving; /email/unsubscribe live). 20261009100300, 20261009112000 and 20261009160100 were released 2026-10-11 after wave 3 verified (job-board .92 with sliceStats.buildSince 2026-10-11T20:48:26Z; shortlist-evaluate 2026-10-10.62 with the Shortlist page deciding through shortlist_decide; layoff-filings 2026-10-09.3 serving and the old build no longer running). Their conditions stay in migrationOrder as after-rules. 20261012111000 was released 2026-10-25 after company profiles phase 1 step 1 verified (employer-profiles answering employer-profiles.2026-10-12.2 and section 80 passing: get_employer_perks answers anon in shape, the perk tables and the audit status refuse it); its condition stays in migrationOrder as an after-rule. 20261011103000 (wave 4) was released 2026-11-08, after the upkeep deploy (main aa2e45cb) verified: job-board answering job-board.2026-09-09.101 and agent-mcp agent-mcp.2026-11-03.1, both at or past its conditions (.93 and 2026-10-11.3), with verify sections 82 and 86 passing in full. It schedules the connector's 30-day search prune, which deletes rows for good; its job-board condition stays in migrationOrder as an after-rule."

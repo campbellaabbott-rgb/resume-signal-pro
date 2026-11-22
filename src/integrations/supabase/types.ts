@@ -1152,6 +1152,30 @@ export type Database = {
         }
         Relationships: []
       }
+      api_expensive_meter: {
+        Row: {
+          endpoint: string
+          span: string
+          subject: string
+          used: number
+          window_start: string
+        }
+        Insert: {
+          endpoint: string
+          span: string
+          subject: string
+          used?: number
+          window_start: string
+        }
+        Update: {
+          endpoint?: string
+          span?: string
+          subject?: string
+          used?: number
+          window_start?: string
+        }
+        Relationships: []
+      }
       api_fit_unscored: {
         Row: {
           calls: number
@@ -1662,6 +1686,27 @@ export type Database = {
           verify_token?: string
           website?: string | null
           work_email?: string
+        }
+        Relationships: []
+      }
+      company_fact_cache: {
+        Row: {
+          company_token: string
+          computed_at: string
+          facts: Json | null
+          kind: string
+        }
+        Insert: {
+          company_token: string
+          computed_at?: string
+          facts?: Json | null
+          kind: string
+        }
+        Update: {
+          company_token?: string
+          computed_at?: string
+          facts?: Json | null
+          kind?: string
         }
         Relationships: []
       }
@@ -6224,6 +6269,24 @@ export type Database = {
         Returns: undefined
       }
       alerts_cron_key_matches: { Args: { p_key: string }; Returns: boolean }
+      api_expensive_take: {
+        Args: {
+          p_endpoint: string
+          p_global_per_minute: number
+          p_n: number
+          p_partial?: boolean
+          p_per_day: number
+          p_per_minute: number
+          p_subject: string
+        }
+        Returns: {
+          et_bound: string
+          et_day_left: number
+          et_granted: number
+          et_minute_left: number
+          et_retry_after_s: number
+        }[]
+      }
       api_key_check: {
         Args: { p_endpoint: string; p_key_hash: string }
         Returns: {
@@ -6416,6 +6479,15 @@ export type Database = {
         Returns: number
       }
       collect_company_flow: { Args: { p_date?: string }; Returns: number }
+      company_facts: {
+        Args: { p_tokens: string[] }
+        Returns: {
+          cf_computed_at: string
+          cf_facts: Json
+          cf_state: string
+          cf_token: string
+        }[]
+      }
       compare_cohorts: {
         Args: {
           p_cohort_a: string
@@ -8196,6 +8268,33 @@ export type Database = {
       payment_revoke_credits: {
         Args: { p_credits: number; p_email: string }
         Returns: number
+      }
+      posting_truth: {
+        Args: { p_ids: string[] }
+        Returns: {
+          pt_aged_at: string
+          pt_board_known: boolean
+          pt_bucket: string
+          pt_capped: boolean
+          pt_closed_at: string
+          pt_closures: number
+          pt_company: string
+          pt_has_closure: boolean
+          pt_id: string
+          pt_in_window: boolean
+          pt_listed: boolean
+          pt_missing_since: string
+          pt_posted_at: string
+          pt_read_at: string
+          pt_read_state: string
+          pt_row_found: boolean
+          pt_seen_gone_at: string
+          pt_source: string
+          pt_title: string
+          pt_token: string
+          pt_untrusted_gone_at: string
+          pt_untrusted_kind: string
+        }[]
       }
       privacy_retention_nightly: { Args: never; Returns: Json }
       pro_entitlement_rows: {
