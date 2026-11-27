@@ -65,7 +65,7 @@
 //     is a live censored observation at t=30 and counts toward the day-14 risk
 //     set. A ten-day-deep record can pass every term of `sufficient` and then
 //     publish a fourteen-day rate "across 10 days of tracking".
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { readFileSync, readdirSync } from "node:fs";
@@ -107,6 +107,20 @@ const JOBS = RAW.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
 const EXPLORE_RAW = readFileSync(resolve(ROOT, "src/pages/Explore.tsx"), "utf8");
 const EXPLORE = EXPLORE_RAW.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
 const SLOW = { timeout: 4000 } as const;
+
+// THE CLOCK IS PINNED (2026-11-22). The pane counts a posting's age in the
+// reader's own calendar days (listingAge with readerTimeZone(), NB-22; the
+// pane joined the card in fix/1119-account, d07469e1b), and these fixtures
+// date a posting 24 x 24 hours before now. When those hours cross a
+// daylight-saving change, the local calendar holds 23 days for one hour a
+// night: the pre-push suite failed "Posted 24 days ago" at 04:40Z on 22 Nov
+// 2026 (Eastern), with the 1 Nov change inside the 24 days. The page was
+// right; the fixture was not. Noon UTC on 1 Dec 2026: no zone in the US,
+// Europe or the southern hemisphere changes its clock in the 24 days before
+// it, and it is after every fixed date the fixtures carry. The clock still
+// ticks from there (shouldAdvanceTime), so the page's waits run as before.
+const PINNED_NOW = new Date("2026-12-01T12:00:00Z");
+const pinClock = () => vi.useFakeTimers({ toFake: ["Date"], now: PINNED_NOW, shouldAdvanceTime: true });
 
 const daysAgoIso = (d: number) => new Date(Date.now() - d * 86_400_000).toISOString();
 
@@ -247,7 +261,9 @@ const line = (sentinel: string) =>
     .find((tx) => tx.includes(sentinel)) ?? "";
 
 describe("a posting age with nothing to measure it against", () => {
+  afterEach(() => { vi.useRealTimers(); });
   beforeEach(() => {
+    pinClock();
     invoke.mockReset();
     rpc.mockReset();
     try { sessionStorage.clear(); localStorage.clear(); } catch { /* blocked */ }

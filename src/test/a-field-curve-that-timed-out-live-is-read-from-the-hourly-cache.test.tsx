@@ -29,7 +29,7 @@
 // No literal any assertion below matches is spelled inside a comment in this
 // file: the names live in constants, so a guard here cannot be satisfied by
 // its own prose.
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
 import { render, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
@@ -74,6 +74,20 @@ const JOBS_PAGE = codeOf(read("src/pages/Jobs.tsx"));
 // case measured 2674 ms on the 2026-09-30 loaded run.
 vi.setConfig(MOUNT_TEST_BUDGET);
 const body = () => document.body.textContent ?? "";
+// THE CLOCK IS PINNED (2026-11-22). The pane counts a posting's age in the
+// reader's own calendar days (listingAge with readerTimeZone(), NB-22; the
+// pane joined the card in fix/1119-account, d07469e1b), and these fixtures
+// date a posting 24 x 24 hours before now. When those hours cross a
+// daylight-saving change, the local calendar holds 23 days for one hour a
+// night: the pre-push suite failed "Posted 24 days ago" at 04:40Z on 22 Nov
+// 2026 (Eastern), with the 1 Nov change inside the 24 days. The page was
+// right; the fixture was not. Noon UTC on 1 Dec 2026: no zone in the US,
+// Europe or the southern hemisphere changes its clock in the 24 days before
+// it, and it is after every fixed date the fixtures carry. The clock still
+// ticks from there (shouldAdvanceTime), so the page's waits run as before.
+const PINNED_NOW = new Date("2026-12-01T12:00:00Z");
+const pinClock = () => vi.useFakeTimers({ toFake: ["Date"], now: PINNED_NOW, shouldAdvanceTime: true });
+
 const iso = (msAgo: number) => new Date(Date.now() - msAgo).toISOString();
 const HOUR = 3_600_000;
 
@@ -166,7 +180,9 @@ function mountJobs(cache: unknown, rows: Row[] = [job()]) {
   return render(<MemoryRouter><Jobs /></MemoryRouter>);
 }
 
+afterEach(() => { vi.useRealTimers(); });
 beforeEach(() => {
+  pinClock();
   rpc.mockReset();
   invoke.mockReset();
   try { sessionStorage.clear(); localStorage.clear(); } catch { /* blocked */ }
