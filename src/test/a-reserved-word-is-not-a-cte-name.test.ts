@@ -50,12 +50,14 @@ export const PG_RESERVED = new Set([
 ]);
 
 /** Drop line comments (double dash), block comments (slash-star) and string
- *  literals, so a word inside prose or a message can never trip the scan. */
+ *  literals, so a word inside prose or a message can never trip the scan.
+ *  One left-to-right pass: whichever starts first wins, as in the server's
+ *  lexer. Three passes in a row broke on a quoted URL holding a double
+ *  hyphen ('.../Customer-Pick-Up-Clerk--Tues...', the Workday names file):
+ *  the comment pass ate the rest of the line and its closing quote, and the
+ *  strings after it paired up wrong, so quoted English was read as code. */
 export function codeOnly(sql: string): string {
-  return sql
-    .replace(/\/\*[\s\S]*?\*\//g, " ")
-    .replace(/--[^\n]*/g, " ")
-    .replace(/'(?:[^']|'')*'/g, "''");
+  return sql.replace(/'(?:[^']|'')*'|--[^\n]*|\/\*[\s\S]*?\*\//g, (t) => (t.startsWith("'") ? "''" : " "));
 }
 
 /** Every unquoted CTE name in a WITH list: `WITH x AS (`, `, x AS (`,
@@ -129,6 +131,12 @@ describe("a reserved word is not a CTE name — has teeth", () => {
   it("ignores the word in a comment or a string, which is where prose lives", () => {
     expect(reservedCteNames("-- both AS (\nWITH x AS (SELECT 'both AS (') SELECT 1")).toEqual([]);
     expect(reservedCteNames("/* , both AS ( */ WITH x AS (SELECT 1) SELECT 1")).toEqual([]);
+  });
+  it("reads a double hyphen inside a string as text, and a quote inside a comment as prose", () => {
+    expect(reservedFromAliases("INSERT INTO t VALUES ('https://x/Clerk--Tues', 'a'),\n  ('b', 'we own it from start to finish')")).toEqual([]);
+    expect(reservedFromAliases("SELECT 'a--b' AS u, 'from two leading firms' AS v FROM t")).toEqual([]);
+    expect(reservedFromAliases("-- it's a note\nSELECT * FROM t to")).toEqual(["to"]);
+    expect(reservedFromAliases("SELECT 'x--y' FROM t leading")).toEqual(["leading"]);
   });
   it("catches a reserved alias but not a reserved word that merely follows the item", () => {
     expect(reservedFromAliases("SELECT * FROM t both")).toEqual(["both"]);
