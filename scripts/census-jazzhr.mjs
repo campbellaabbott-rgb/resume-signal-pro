@@ -42,6 +42,9 @@
 
 import fs from "node:fs";
 import { createHash } from "node:crypto";
+import { refuseArchiveListing } from "./od-cc.mjs";
+
+refuseArchiveListing(import.meta.url);
 
 const arg = (k, d) => {
   const m = process.argv.find((a) => a.startsWith(`--${k}=`));

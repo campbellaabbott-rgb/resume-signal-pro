@@ -9,9 +9,18 @@
 #
 # WHEN TO JUDGE. The deploy instant is VD90_AT if set, else
 # sliceStats.lightReread.since (written by the first .90 slice). A board's
-# claim FAILs only once its turn has come: one cold rotation (5h57m measured
-# 2026-10-05/06, +10% = 393 min) for a board visited by the rotation, two for
-# pg (base visit plus deep visit). VD90_POLLS=N adds N status reads 60 s apart
+# claim FAILs only once its turn has come: one cold rotation (the lap bound
+# below) for a board visited by the rotation, two for pg (base visit plus deep
+# visit).
+#
+# THE LAP BOUND IS COMPUTED (W2, 2026-11-08): 1.1 x the reference lap x (cold
+# boards now / cold boards at the reference). The reference is .89's 5h57m
+# over 44,399 boards (2026-10-05/06), which gives 393 at that catalogue, until
+# the VD90_WRAPS ledger holds a `reference` {lapMin, coldBoards, build,
+# measuredAt, how} recorded by W4's verify on 2026-09-09.103 or later; an
+# earlier build's reference is ignored, so the bound never re-bases to a lap
+# measured while the rotation was broken. A larger catalogue earns a
+# proportionally longer lap and no more. VD90_POLLS=N adds N status reads 60 s apart
 # for the deep-lane and cursor-rate lines (default 0: two reads, start and end).
 #
 # THE ROTATION BOUND is judged on the LAST COMPLETED wrap. lastRotationAgeMin
@@ -25,6 +34,10 @@
 # whose wrap counts for 48 hours, since a reading that old says nothing of the
 # rotation running now; and failing both the pace of the rotation in progress, which
 # is a pace, never a PASS.
+#
+# THE CATALOGUE THE CENSUS READS is scripts/catalogue-reader.mjs's import of
+# this checkout's sources.ts; when the deployed build is this checkout's
+# BUILD_VERSION, its length must be the status.catalogSize the board reports.
 echo "== 90. job-board .90: light re-read in the visit, registry by board, greenhouse streamed light, vendors named, deep lane ahead of base =="
 J '{"action":"status"}' > /tmp/vd_90_status_0.json; date +%s > /tmp/vd_90_status_0.t
 curl -s -m 30 -o /dev/null -D /tmp/vd_90_preflight.txt -X OPTIONS "$B/functions/v1/job-board" -H "x-rb-budget: probe" \
@@ -80,7 +93,9 @@ while [ "$VD90_I" -le "$VD90_N" ]; do
   sleep 60; J '{"action":"status"}' > "/tmp/vd_90_status_$VD90_I.json"; date +%s > "/tmp/vd_90_status_$VD90_I.t"; VD90_I=$((VD90_I+1))
 done
 J '{"action":"status"}' > "/tmp/vd_90_status_$VD90_I.json"; date +%s > "/tmp/vd_90_status_$VD90_I.t"
-VD90_WRAPS="${VD90_WRAPS:-$HOME/.config/resumebooster/verify-state/cold-wraps.json}" VD90_AT="${VD90_AT:-}" VD90_LAST="$VD90_I" node -e '
+VD90_CAT=$(node scripts/catalogue-reader.mjs --count 2>/dev/null | tail -1)
+VD90_BV=$(sed -nE 's/^const BUILD_VERSION = "([^"]+)".*/\1/p' supabase/functions/job-board/index.ts | head -1)
+VD90_CAT="$VD90_CAT" VD90_BV="$VD90_BV" VD90_WRAPS="${VD90_WRAPS:-$HOME/.config/resumebooster/verify-state/cold-wraps.json}" VD90_AT="${VD90_AT:-}" VD90_LAST="$VD90_I" node -e '
 const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);const info=(m)=>console.log("INFO  "+m);
 const rd=(f)=>{try{return fs.readFileSync(f,"utf8")}catch{return ""}};const js=(s)=>{try{return JSON.parse(s)}catch{return null}};
 const S=[];for(let i=0;i<=Number(process.env.VD90_LAST);i++){const s=js(rd("/tmp/vd_90_status_"+i+".json"));const t=Number(rd("/tmp/vd_90_status_"+i+".t"));if(s&&typeof s==="object"&&!Array.isArray(s))S.push({s,t:t*1000})}
@@ -91,7 +106,20 @@ const late=(c,m)=>console.log((c?"PASS":(v90?"FAIL":"INFO"))+"  "+m);
 const ss=st.sliceStats||{};const lr=ss.lightReread;
 const atEnv=Date.parse(process.env.VD90_AT||"");const atLr=lr&&typeof lr.since==="string"?Date.parse(lr.since):NaN;
 const at=Number.isFinite(atEnv)?atEnv:(v90&&Number.isFinite(atLr)?atLr:NaN);
-const hrs=Number.isFinite(at)?(Date.now()-at)/3600000:0,ROT=393/60;
+const LEDGER=js(rd(process.env.VD90_WRAPS||""))||{};
+const REF0={lapMin:357,coldBoards:44399,build:"2026-09-09.89",how:"5h57m measured 2026-10-05/06"};
+const refOk=(r)=>{if(!r||typeof r!=="object")return false;const b=/^(\d{4}-\d{2}-\d{2})\.(\d+)$/.exec(String(r.build||""));return !!b&&(b[1]>"2026-09-09"||(b[1]==="2026-09-09"&&Number(b[2])>=103))&&Number(r.lapMin)>0&&Number(r.coldBoards)>0};
+const REF=refOk(LEDGER.reference)?LEDGER.reference:REF0;
+const coldNow=Number(st.coldBoards)>0?Number(st.coldBoards):Number(REF.coldBoards);
+const BOUND=Math.round(1.1*Number(REF.lapMin)*coldNow/Number(REF.coldBoards));
+const BFORM=BOUND+" = 1.1 x "+REF.lapMin+" min x ("+coldNow+" / "+REF.coldBoards+" cold boards"+(Number(st.coldBoards)>0?"":", coldBoards unread")+"; reference "+REF.build+(REF===REF0?", the default until W4 verifies":", "+(REF.how||"recorded"))+")";
+info("lap bound "+BFORM+(LEDGER.reference&&REF===REF0?"; the ledger reference "+JSON.stringify(LEDGER.reference).slice(0,120)+" is ignored: only a 2026-09-09.103 or later build may move it":""));
+const CAT=Number(process.env.VD90_CAT),BV=String(process.env.VD90_BV||""),CS=Number(st.catalogSize);
+if(!(CAT>0))info("the census reader printed no catalogue length (node scripts/catalogue-reader.mjs --count), so it is not compared with status.catalogSize");
+else if(!Number.isFinite(CS))info("status.catalogSize is unread; the census reads "+CAT+" boards at this checkout ("+(BV||"no BUILD_VERSION")+")");
+else if(BV&&st.version===BV)ok(CAT===CS,"the catalogue the census reads (scripts/catalogue-reader.mjs at this checkout, "+BV+") holds "+CAT+" boards; status.catalogSize = "+CS+" (want equal)");
+else info("the census reads "+CAT+" boards at this checkout ("+(BV||"no BUILD_VERSION")+"); status.catalogSize = "+CS+" on "+st.version+": compared once the deployed build is this checkout");
+const hrs=Number.isFinite(at)?(Date.now()-at)/3600000:0,ROT=BOUND/60;
 info("deploy instant "+(Number.isFinite(at)?new Date(at).toISOString()+" ("+(Number.isFinite(atEnv)?"VD90_AT":"sliceStats.lightReread.since")+"), "+hrs.toFixed(1)+"h ago":"unknown (not .90 yet)")+"; a board visited by the cold rotation is judged after "+ROT.toFixed(1)+"h, pg after "+(2*ROT).toFixed(1)+"h");
 const due=(h)=>v90&&hrs>=h;
 const verdict=(good,h,msg,wait)=>console.log((good?"PASS":(due(h)?"FAIL":"INFO"))+"  "+msg+(good||due(h)?"":" -- "+(v90?wait+"; "+hrs.toFixed(1)+"h of "+h.toFixed(1)+"h so far":"not .90 yet")));
@@ -179,16 +207,16 @@ if(WF&&v90&&Number.isFinite(age)&&S.length){
   try{fs.mkdirSync(require("path").dirname(WF),{recursive:true});fs.writeFileSync(WF,JSON.stringify(WL,null,1)+"\n")}catch{}}
 const RULE=st.version==="2026-09-09.100"?"on .100 the cause is partly established: chain stops, then list-started slices holding the lock, the description sweep part of it. The fix rides the next job-board build; judge it by list position over two laps":"count the chain stops by mode and judge the lap by list position over two laps";
 const pubWrap=Number(st.lastWrapMin);const mine=WL.wraps.filter((w)=>w&&w.build===st.version&&Number.isFinite(Number(w.wrapMin))&&Date.now()-Date.parse(w.endedAt)<=48*3600000);const lastW=mine[mine.length-1];
-const wrapLine=(min,src)=>ok(min<=393,"the last completed cold rotation on "+st.version+" took "+min+" min ("+src+"; want at most 393 = 5h57m + 10%"+(min<=393?"":"; "+RULE)+")");
+const wrapLine=(min,src)=>ok(min<=BOUND,"the last completed cold rotation on "+st.version+" took "+min+" min ("+src+"; want at most "+BFORM+(min<=BOUND?"":"; "+RULE)+")");
 if(v90&&Number.isFinite(age)&&Number.isFinite(at)&&age*60000<=Date.now()-at){
-  if(age>393)ok(false,"the cold rotation running on "+shortV+" is "+age+" min old (want at most 393 = 5h57m + 10%; "+RULE+")");}
-else info("lastRotationAgeMin = "+age+" (the rotation in progress began before the deploy, or not .90 yet; the first rotation wholly on .90 must wrap within 393 min)");
+  if(age>BOUND)ok(false,"the cold rotation running on "+shortV+" is "+age+" min old (want at most "+BFORM+"; "+RULE+")");}
+else info("lastRotationAgeMin = "+age+" (the rotation in progress began before the deploy, or not .90 yet; the first rotation wholly on .90 must wrap within "+BOUND+" min)");
 if(v90&&Number.isFinite(pubWrap)&&pubWrap>0)wrapLine(pubWrap,"status.lastWrapMin");
 else if(v90&&lastW)wrapLine(Number(lastW.wrapMin),"ended "+lastW.endedAt+", "+lastW.how);
-else if(v90&&Number.isFinite(age)&&age<=393){
+else if(v90&&Number.isFinite(age)&&age<=BOUND){
   const N=Number(st.coldBoards)||0,c=Number((st.cursor||{}).cold);
-  if(N>0&&c/N>=0.25){const pace=Math.round(N*age/c);console.log((pace>393?"FAIL":"INFO")+"  no completed wrap from the last 48 h is readable, and at the pace so far ("+c+" of "+N+" boards in "+age+" min) this rotation takes "+pace+" min: a pace, not a wrap (want at most 393"+(pace>393?"; "+RULE:"")+")")}
-  else info("no completed wrap from the last 48 h is readable and the rotation in progress is too young to pace ("+age+" min, cursor "+c+" of "+N+"), so the 393-minute bound is not judged");}
+  if(N>0&&c/N>=0.25){const pace=Math.round(N*age/c);console.log((pace>BOUND?"FAIL":"INFO")+"  no completed wrap from the last 48 h is readable, and at the pace so far ("+c+" of "+N+" boards in "+age+" min) this rotation takes "+pace+" min: a pace, not a wrap (want at most "+BFORM+(pace>BOUND?"; "+RULE:"")+")")}
+  else info("no completed wrap from the last 48 h is readable and the rotation in progress is too young to pace ("+age+" min, cursor "+c+" of "+N+"), so the "+BOUND+"-minute bound is not judged");}
 // F7: pg against its own feed.
 const P=D.pg||{};
 if(!P.feed||!P.served||P.feed.err||P.served.err||!Array.isArray(P.feed.pos))info("workday:pg~wd5~1000 "+((P.feed&&P.feed.err)||(P.served&&P.served.err)||"unreadable")+" -- cannot judge");

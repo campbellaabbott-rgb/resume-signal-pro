@@ -88,6 +88,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import { readCatalogue } from "./catalogue-reader.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, "..");
@@ -982,7 +983,9 @@ export async function main() {
   const jsonFile = flagValue("--json", null);
   const rowsFile = flagValue("--rows", null);
 
-  const index = buildCatalogIndex(parseCatalog(readFileSync(SOURCES_PATH, "utf8")));
+  // The run reads the catalogue by importing it, the one reader every census
+  // script shares; parseCatalog stays for the unit test that blinds it.
+  const index = buildCatalogIndex(await readCatalogue(SOURCES_PATH));
 
   if (args.includes("--stock")) {
     const { stock, register_total, measured_at } = await readStock({ index });

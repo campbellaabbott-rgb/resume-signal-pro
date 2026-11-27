@@ -7,6 +7,9 @@
 // Usage: node scripts/census-rippling.mjs <verified-out.json>
 
 import fs from "node:fs";
+import { refuseArchiveListing } from "./od-cc.mjs";
+
+refuseArchiveListing(import.meta.url);
 
 const OUT = process.argv[2] || "rippling-verified.json";
 const CDX = "https://index.commoncrawl.org";

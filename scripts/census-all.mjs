@@ -57,6 +57,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // non-2xx with backoff (CDX rate-limits bursts with 403/500, not just 429).
 import { execFile as _execFile } from "node:child_process";
 import { promisify as _promisify } from "node:util";
+import { refuseArchiveListing } from "./od-cc.mjs";
+
+refuseArchiveListing(import.meta.url);
 const _execFileP = _promisify(_execFile);
 async function fetchTextRetry(url, tries = 6) {
   for (let i = 0; i < tries; i++) {

@@ -23,6 +23,7 @@
 //   node scripts/stage-teamtailor-custom-domains.mjs <resolved.json> <sources.ts> <out.json>
 
 import { readFileSync, writeFileSync } from "node:fs";
+import { readCatalogue, tokensOf } from "./catalogue-reader.mjs";
 
 const [resolvedPath, sourcesPath, outPath] = process.argv.slice(2);
 if (!outPath) {
@@ -31,14 +32,10 @@ if (!outPath) {
 }
 
 const rows = JSON.parse(readFileSync(resolvedPath, "utf8"));
-const src = readFileSync(sourcesPath, "utf8");
-
-// Carried tokens: pulled from entry declarations, not from a hand-kept list —
-// hand-listed catalogs drift (the schema-drift lesson, applied to a file).
-const carried = new Set(
-  [...src.matchAll(/source:\s*"teamtailor"\s*,\s*token:\s*"([^"]+)"/g)]
-    .map((m) => m[1].toLowerCase()),
-);
+// Carried tokens: read by importing the catalogue named on the command line,
+// not from a hand-kept list (hand-listed catalogs drift: the schema-drift
+// lesson, applied to a file) and not by a regex (one saw 496 of 44,523).
+const carried = tokensOf(await readCatalogue(sourcesPath), "teamtailor");
 
 const resolved = rows.filter((r) => r.token);
 const unresolvable = rows.length - resolved.length;

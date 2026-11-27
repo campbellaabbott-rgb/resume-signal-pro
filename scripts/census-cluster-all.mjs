@@ -20,6 +20,9 @@ import zlib from "node:zlib";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { oracleTokenOfHost } from "./oracle-host.mjs";
+import { refuseArchiveListing } from "./od-cc.mjs";
+
+refuseArchiveListing(import.meta.url);
 const execFileP = promisify(execFile);
 
 const [, , CRAWL, OUT] = process.argv;

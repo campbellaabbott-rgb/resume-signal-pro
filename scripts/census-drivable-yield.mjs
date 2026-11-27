@@ -46,7 +46,7 @@
 //
 // DISCOVERY ONLY. A CNAME proves where a hostname points; a feed proves someone
 // is hiring there today. Neither proves the board belongs in the catalog — the
-// corporate-only rule and token-first dedupe still apply, and the merge guard's
+// census name rule and token-first dedupe still apply, and the merge guard's
 // collision rule (a drivable vendor may enter even when the employer name is
 // already carried on a walled one) is what decides.
 //
@@ -352,8 +352,8 @@ async function sweep(file, tld, limit, outPath, ranking) {
   verified.sort((a, b) => (b.jobs ?? 0) - (a.jobs ?? 0));
   writeFileSync(outPath, JSON.stringify({ tld, sweptDomains: domains.length, boards: verified }, null, 1));
   console.log(`\n  -> ${outPath}`);
-  console.log("  NOT catalog-ready: token-first dedupe, the corporate-only rule and the");
-  console.log("  merge guard's collision rule still decide what may enter sources.ts.");
+  console.log("  NOT catalog-ready: token-first dedupe, the census name rule and the");
+  console.log("  merge guard's collision rule (D6) still decide what may enter sources.ts.");
 }
 
 // ---------------------------------------------------------------------- main
