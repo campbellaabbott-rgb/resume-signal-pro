@@ -5,7 +5,12 @@
 // not TypeScript out of a function directory, which is what happened to the
 // classifier's anchors JSON on 2026-09-15). Point LAYOFF_SAMPLES_DIR elsewhere
 // to run the same tests against a fresh capture.
-const DEFAULT_DIR = new URL("../../../scripts/data/layoff-samples/", import.meta.url).pathname.replace(/\/$/, "");
+//
+// fileURLToPath decodes the file URL. The URL's own pathname keeps a space as
+// %20, and every agent worktree here sits under a folder with spaces in it.
+import { fileURLToPath } from "node:url";
+
+const DEFAULT_DIR = fileURLToPath(new URL("../../../scripts/data/layoff-samples/", import.meta.url)).replace(/\/$/, "");
 
 export function samplesDir(): string {
   const dir = Deno.env.get("LAYOFF_SAMPLES_DIR") ?? DEFAULT_DIR;

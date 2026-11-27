@@ -17,12 +17,13 @@
 //
 // Run: deno test --config supabase/functions/deno.json --allow-read --allow-env --allow-run supabase/functions/layoff-filings/
 
+import { fileURLToPath } from "node:url";
 import { assert, assertEquals, assertStringIncludes } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { buildMirrorRows, FACET_VENDOR, MIRROR_KEY_SEP, mirrorRowKey } from "./mirror-rows.ts";
 import type { MirrorRow } from "./mirror-rows.ts";
 import { deployMirrorRows } from "./mirror-catalogue.ts";
 
-const REPO = new URL("../../../", import.meta.url).pathname.replace(/\/$/, "");
+const REPO = fileURLToPath(new URL("../../../", import.meta.url)).replace(/\/$/, "");
 const RAW = Deno.readTextFileSync(new URL("./index.ts", import.meta.url));
 const CODE = RAW.replace(/\/\*[\s\S]*?\*\//g, "\n").replace(/^\s*\/\/.*$/gm, "");
 
