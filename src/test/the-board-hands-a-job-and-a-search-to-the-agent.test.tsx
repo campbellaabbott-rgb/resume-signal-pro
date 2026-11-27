@@ -774,7 +774,7 @@ describe("3. the private routes are disallowed in every robots.txt block", () =>
   it("teeth: one Disallow line removed from one block is one offence", () => {
     // Since 2026-11-18 no group opens with an allow line (CRAWL-6, below), so
     // the Googlebot group starts at its first Disallow.
-    const mutated = ROBOTS.replace("User-agent: Googlebot\nDisallow: /auth\n", "User-agent: Googlebot\n");
+    const mutated = ROBOTS.replace("User-agent: Googlebot\nContent-Signal: search=yes, ai-input=yes, ai-train=no\nDisallow: /auth\n", "User-agent: Googlebot\nContent-Signal: search=yes, ai-input=yes, ai-train=no\n");
     expect(mutated).not.toBe(ROBOTS);
     expect(offences(mutated)).toEqual(["Googlebot lacks /auth"]);
     const noConsent = ROBOTS.replace(/Disallow: \/oauth\/consent\n/, "");
@@ -860,9 +860,9 @@ describe("3. every private route is disallowed whichever matching rule a reader 
   it("every group, named and *, disallows every private and /admin/ route by the longest match and by the first, and none opens with the whole site allowed", () => {
     expect(offences(ROBOTS)).toEqual([]);
   });
-  it("the public pages stay readable to every group but meta-externalagent, which reads none", () => {
+  it("the public pages stay readable to every group but meta-externalagent and the AI-training crawlers, which read none", () => {
     for (const g of groupsOf(ROBOTS)) {
-      const blocked = g.agents.includes("meta-externalagent");
+      const blocked = g.agents.some((a) => ["meta-externalagent", "GPTBot", "ClaudeBot", "anthropic-ai", "CCBot", "Applebot-Extended"].includes(a));
       for (const p of PUBLIC) for (const [name, allows] of READERS) {
         expect(allows(g.rules, p), `${g.agents.join(", ")} ${p} (${name} match)`).toBe(!blocked);
       }

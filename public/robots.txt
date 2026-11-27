@@ -32,7 +32,17 @@
 # Bing and RFC 9309 take the longest match, which these groups satisfy too;
 # the guard parses this file both ways (SEO audit 2026-11-18, CRAWL-6).
 
+# CODE OF CONDUCT FOR AI (owner's rule, 2026-11-27): our job listings may be
+# shown in search results and in AI answers, but may NOT be used to train AI
+# models. Every group carries Cloudflare's Content-Signal line saying so, and
+# the crawlers that exist only to collect training data (GPTBot, ClaudeBot,
+# anthropic-ai, CCBot, Applebot-Extended) may read nothing. The search and
+# answer agents (OAI-SearchBot, ChatGPT-User, PerplexityBot, Googlebot, Bingbot)
+# stay welcome. Agents that want to search the jobs should use the AI connector
+# described at /agents and in /llms.txt, not load the pages.
+
 User-agent: Googlebot
+Content-Signal: search=yes, ai-input=yes, ai-train=no
 Disallow: /auth
 Disallow: /account
 Disallow: /success
@@ -50,6 +60,7 @@ Disallow: /email/unsubscribe
 Disallow: /admin/
 
 User-agent: Bingbot
+Content-Signal: search=yes, ai-input=yes, ai-train=no
 Disallow: /auth
 Disallow: /account
 Disallow: /success
@@ -73,6 +84,8 @@ Disallow: /admin/
 # See also: /llms.txt (overview) and /llms-full.txt (full guide text).
 
 User-agent: GPTBot
+Content-Signal: search=yes, ai-input=yes, ai-train=no
+Disallow: /
 Disallow: /auth
 Disallow: /account
 Disallow: /success
@@ -90,6 +103,7 @@ Disallow: /email/unsubscribe
 Disallow: /admin/
 
 User-agent: OAI-SearchBot
+Content-Signal: search=yes, ai-input=yes, ai-train=no
 Disallow: /auth
 Disallow: /account
 Disallow: /success
@@ -107,6 +121,7 @@ Disallow: /email/unsubscribe
 Disallow: /admin/
 
 User-agent: ChatGPT-User
+Content-Signal: search=yes, ai-input=yes, ai-train=no
 Disallow: /auth
 Disallow: /account
 Disallow: /success
@@ -124,6 +139,8 @@ Disallow: /email/unsubscribe
 Disallow: /admin/
 
 User-agent: ClaudeBot
+Content-Signal: search=yes, ai-input=yes, ai-train=no
+Disallow: /
 Disallow: /auth
 Disallow: /account
 Disallow: /success
@@ -141,6 +158,7 @@ Disallow: /email/unsubscribe
 Disallow: /admin/
 
 User-agent: Claude-Web
+Content-Signal: search=yes, ai-input=yes, ai-train=no
 Disallow: /auth
 Disallow: /account
 Disallow: /success
@@ -158,6 +176,8 @@ Disallow: /email/unsubscribe
 Disallow: /admin/
 
 User-agent: anthropic-ai
+Content-Signal: search=yes, ai-input=yes, ai-train=no
+Disallow: /
 Disallow: /auth
 Disallow: /account
 Disallow: /success
@@ -175,6 +195,7 @@ Disallow: /email/unsubscribe
 Disallow: /admin/
 
 User-agent: PerplexityBot
+Content-Signal: search=yes, ai-input=yes, ai-train=no
 Disallow: /auth
 Disallow: /account
 Disallow: /success
@@ -192,6 +213,7 @@ Disallow: /email/unsubscribe
 Disallow: /admin/
 
 User-agent: Google-Extended
+Content-Signal: search=yes, ai-input=yes, ai-train=no
 Disallow: /auth
 Disallow: /account
 Disallow: /success
@@ -209,6 +231,8 @@ Disallow: /email/unsubscribe
 Disallow: /admin/
 
 User-agent: Applebot-Extended
+Content-Signal: search=yes, ai-input=yes, ai-train=no
+Disallow: /
 Disallow: /auth
 Disallow: /account
 Disallow: /success
@@ -226,6 +250,8 @@ Disallow: /email/unsubscribe
 Disallow: /admin/
 
 User-agent: CCBot
+Content-Signal: search=yes, ai-input=yes, ai-train=no
+Disallow: /
 Disallow: /auth
 Disallow: /account
 Disallow: /success
@@ -245,6 +271,7 @@ Disallow: /admin/
 # Social preview fetchers
 
 User-agent: Twitterbot
+Content-Signal: search=yes, ai-input=yes, ai-train=no
 Disallow: /auth
 Disallow: /account
 Disallow: /success
@@ -262,6 +289,7 @@ Disallow: /email/unsubscribe
 Disallow: /admin/
 
 User-agent: facebookexternalhit
+Content-Signal: search=yes, ai-input=yes, ai-train=no
 Disallow: /auth
 Disallow: /account
 Disallow: /success
@@ -288,6 +316,7 @@ Disallow: /admin/
 # name them (src/test/the-board-hands-a-job-and-a-search-to-the-agent.test.tsx).
 
 User-agent: meta-externalagent
+Content-Signal: search=yes, ai-input=yes, ai-train=no
 Disallow: /
 Disallow: /auth
 Disallow: /account
@@ -306,6 +335,7 @@ Disallow: /email/unsubscribe
 Disallow: /admin/
 
 User-agent: *
+Content-Signal: search=yes, ai-input=yes, ai-train=no
 Disallow: /auth
 Disallow: /account
 Disallow: /success

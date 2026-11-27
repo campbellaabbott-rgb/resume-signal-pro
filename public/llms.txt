@@ -8,6 +8,13 @@ One paid report (the $5 Full Analysis) and one optional monthly plan, Pro (the w
 
 Full guide text, the complete data-page map, and the CURRENT benchmark figures (median/quartile ATS scores, per-industry, with as-of date) in one fetch: [/llms-full.txt](https://resumebooster.work/llms-full.txt). Every page in the sitemap is prerendered static HTML — no JavaScript needed to read it.
 
+## Rules for AI agents
+
+- Allowed: show our job listings and pages in search results and in AI answers, with a link back to the posting.
+- Not allowed: using our job listings or pages to train AI models (robots.txt carries Content-Signal: search=yes, ai-input=yes, ai-train=no).
+- Preferred way in: to search or read jobs, use the [Resume Booster AI connector](https://resumebooster.work/agents) instead of loading the job pages. It is free and returns structured results.
+- Keep page requests slow; job pages are rate-limited and automated browsers may be asked to prove they are human.
+
 ## Prices and limits (as of 2026-10-26)
 
 Prices are in USD; days are UTC days. The same figures are on [/pricing](https://resumebooster.work/pricing).
