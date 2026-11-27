@@ -17,10 +17,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
-import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
+import { FIRST_REPORT, SLOW, budgetFor } from "./helpers/mount-budget";
 import { clickWhenEnabled } from "./helpers/click-when-enabled";
 
-vi.setConfig(MOUNT_TEST_BUDGET);
+// The longest chain, the pasted-posting and sheet cases: the page's buttons
+// (or the sheet tab), scan() (buttons, the enabled scan button, the report)
+// and the writer's request. The report gets FIRST_REPORT in every case, since
+// whichever case runs first in the file pays the lazy path.
+vi.setConfig(budgetFor(SLOW, SLOW, SLOW, FIRST_REPORT, SLOW));
 
 const SCAN = {
   success: true,
@@ -124,7 +128,7 @@ const scanButton = () => screen.getAllByRole("button").find((b) => b.closest('[d
 async function scan() {
   await screen.findAllByRole("button", {}, SLOW);
   await clickWhenEnabled(scanButton);
-  await screen.findByTestId("report-next-steps", {}, SLOW);
+  await screen.findByTestId("report-next-steps", {}, FIRST_REPORT);
 }
 const tailorButton = () => screen.queryByRole("button", { name: /Generate Tailored Resume/i });
 const writerCalls = () => invoke.mock.calls.filter(([fn]) => fn === "generate-tailored-resume");
@@ -146,7 +150,10 @@ describe("the report's tailored-résumé card", () => {
     fireEvent.change(jdBox()!, { target: { value: POSTING } });
     await scan();
     fireEvent.click(tailorButton()!);
-    await waitFor(() => expect(writerCalls().length).toBe(1));
+    // A count, not a value read off the growing call log, so SLOW cannot
+    // forgive a wrong request. On CI the request is logged 0.3-1.5 s after the
+    // report mounts (15 runs), too close to the 1 s default it had.
+    await waitFor(() => expect(writerCalls().length).toBe(1), SLOW);
     expect(writerBody().jobDescription).toBe(POSTING);
     expect(writerBody().jobTitle).toBe("Target Role");
     expect(JSON.stringify(writerBody())).not.toMatch(/Position|requiring strong skills/);
@@ -155,13 +162,13 @@ describe("the report's tailored-résumé card", () => {
   it("with a job picked from a sheet, sends that job's own title, company and text", async () => {
     parseSpreadsheet.mockResolvedValue({ data: { success: true, jobs: [{ id: "1", title: "Charge Nurse", company: "Northside Hospital", location: "Leeds", description: POSTING }] }, error: null });
     mount();
-    fireEvent.click(await screen.findByRole("tab", { name: /^Google Sheets$/ }));
+    fireEvent.click(await screen.findByRole("tab", { name: /^Google Sheets$/ }, SLOW));
     fireEvent.change(screen.getByPlaceholderText(/docs\.google\.com/i), { target: { value: "https://docs.google.com/spreadsheets/d/abc/edit" } });
     fireEvent.click(screen.getByRole("button", { name: /Import from Google Sheets/i }));
     await act(async () => { await new Promise((r) => setTimeout(r, 20)); });
     await scan();
     fireEvent.click(tailorButton()!);
-    await waitFor(() => expect(writerCalls().length).toBe(1));
+    await waitFor(() => expect(writerCalls().length).toBe(1), SLOW);
     expect(writerBody()).toMatchObject({ jobTitle: "Charge Nurse", jobCompany: "Northside Hospital", jobDescription: POSTING });
   });
 });
